@@ -18,8 +18,12 @@ experience and rebuilt with a full red theme and the LUFF brand.
   **Trade** button that opens a modal with a **live DexScreener chart** and an embedded
   **Jupiter** swap so users can **buy/sell real Solana tokens** with their own wallet,
   without leaving the site. Buy/Sell toggle flips the swap direction (SOL ↔ token).
-- **Portfolio** — a real-time view of the assets and coins you hold, with total value,
-  all-time P&L, 24h change, an allocation bar and per-asset breakdown that ticks live.
+- **Portfolio (real wallet)** — connect Phantom or paste any Solana address to load its
+  **real on-chain holdings** (native SOL + all SPL / Token-2022 tokens) read via RPC and
+  priced live from DexScreener: total value, 24h change, allocation bar and a per-asset
+  breakdown, auto-refreshing on an interval. A "preview demo portfolio" (with simulated
+  P&L) is available as a fallback. See `src/lib/solana.ts`,
+  `src/hooks/useWalletPortfolio.ts` and `src/components/Portfolio.tsx`.
 - **Info pages** — standalone **About**, **Docs** and **Agent SDK** pages (in `public/`)
   that open in a new tab, styled to match the app.
 - **Agent marketplace** — live grid of agent tokens with price, 24h change, market cap,

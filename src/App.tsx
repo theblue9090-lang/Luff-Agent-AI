@@ -143,8 +143,8 @@ export default function App() {
           holders={stats.holders}
         />
 
-        {/* Real-time portfolio of the user's assets */}
-        <Portfolio connected={connected} onConnect={handleConnect} />
+        {/* Real-time portfolio — connect a Solana wallet for live on-chain holdings */}
+        <Portfolio />
 
         {/* Live coin data from DexScreener + real-time pump.fun launches */}
         <LiveMarkets />

@@ -134,3 +134,52 @@ export async function fetchMarkets(): Promise<Coin[]> {
   if (!addresses.length) return []
   return hydrate(addresses)
 }
+
+export interface TokenPrice {
+  mint: string
+  symbol: string
+  name: string
+  icon: string | null
+  priceUsd: number
+  change24h: number
+}
+
+/** Price a list of token mints via DexScreener, keyed by mint (most-liquid pair). */
+export async function fetchTokenPrices(mints: string[]): Promise<Map<string, TokenPrice>> {
+  const unique = [...new Set(mints)]
+  const chunks: string[][] = []
+  for (let i = 0; i < unique.length; i += 30) chunks.push(unique.slice(i, i + 30))
+
+  const responses = await Promise.allSettled(
+    chunks.map((c) => getJSON(`${BASE}/latest/dex/tokens/${c.join(',')}`)),
+  )
+
+  const best = new Map<string, { tp: TokenPrice; liq: number }>()
+  for (const res of responses) {
+    if (res.status !== 'fulfilled') continue
+    const pairs: any[] = res.value?.pairs ?? []
+    for (const p of pairs) {
+      if (p.chainId !== 'solana') continue
+      const mint = p.baseToken?.address
+      if (!mint) continue
+      const liq = num(p.liquidity?.usd)
+      const prev = best.get(mint)
+      if (prev && prev.liq >= liq) continue
+      best.set(mint, {
+        liq,
+        tp: {
+          mint,
+          symbol: p.baseToken?.symbol || '?',
+          name: p.baseToken?.name || p.baseToken?.symbol || 'Unknown',
+          icon: p.info?.imageUrl || null,
+          priceUsd: num(p.priceUsd),
+          change24h: num(p.priceChange?.h24),
+        },
+      })
+    }
+  }
+
+  const out = new Map<string, TokenPrice>()
+  for (const [mint, v] of best) out.set(mint, v.tp)
+  return out
+}
