@@ -7,6 +7,13 @@ inspired by the Virtuals app experience and rebuilt with a full red theme and th
 
 ## Features / Tools
 
+- **Live coin markets (DexScreener)** — a real-time board of coins with tabs for
+  **New, Top, Top Gainers, Losers, Movers (volume)** and **Trending**, showing price,
+  1h / 24h change, 24h volume and market cap across chains. Auto-refreshes on an
+  interval; a manual **Refresh** button is also provided.
+- **pump.fun Live Launches** — a real-time stream that connects to pump.fun (via the
+  free PumpPortal WebSocket) and prepends **every brand-new coin the instant it mints**,
+  with a highlight animation on the newest entry.
 - **Agent marketplace** — live grid of agent tokens with price, 24h change, market cap,
   volume, holders and animated sparkline charts.
 - **Live prices** — prices, market caps and 24h change drift in real time to feel like a
@@ -24,7 +31,27 @@ inspired by the Virtuals app experience and rebuilt with a full red theme and th
 - **Points** — LUFF Points balance and an earn CTA.
 - **Fully responsive** — mobile drawer nav, adaptive grid, bottom-sheet modals on mobile.
 
-> This is a front-end demo — wallet connections and trades are simulated, no real funds move.
+> Wallet connections and trades are simulated (no real funds move), but the coin
+> **market data and pump.fun launch feed are real and live** — fetched directly from
+> public APIs in the browser, no backend or API key required.
+
+## Live data sources
+
+The live sections work entirely client-side:
+
+- **DexScreener API** (`https://api.dexscreener.com`) — public, free, CORS-enabled.
+  We pull trending / boosted / newly-profiled tokens, hydrate them with full pair
+  data, and derive the New / Top / Gainers / Losers / Movers / Trending lists.
+  See `src/lib/marketApi.ts` and `src/hooks/useLiveMarkets.ts`.
+- **pump.fun via PumpPortal** (`wss://pumpportal.fun/api/data`) — a free WebSocket
+  that broadcasts every new pump.fun token creation. We subscribe with
+  `subscribeNewToken` and stream launches in as they happen.
+  See `src/hooks/usePumpFeed.ts`.
+
+If a feed can't be reached (e.g. offline, or inside a sandboxed preview whose
+network egress is restricted), the board shows clearly-labelled **sample data** and
+the launch feed shows an **offline** state — both switch to live automatically in a
+normal browser.
 
 ## Tech stack
 

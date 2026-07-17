@@ -63,3 +63,17 @@ body {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-luff-red via-luff-rose to-luff-ember;
   }
 }
+
+@keyframes flashIn {
+  0% {
+    background-color: rgba(255, 46, 62, 0.22);
+    transform: translateY(-4px);
+  }
+  100% {
+    background-color: transparent;
+    transform: translateY(0);
+  }
+}
+.flash-in {
+  animation: flashIn 1.6s ease-out;
+}

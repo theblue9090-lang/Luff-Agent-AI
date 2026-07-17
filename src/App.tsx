@@ -9,6 +9,8 @@ import StatsBar from './components/StatsBar'
 import FilterBar, { type TypeFilter, type SortKey } from './components/FilterBar'
 import AgentCard from './components/AgentCard'
 import GenesisSection from './components/GenesisSection'
+import LiveMarkets from './components/LiveMarkets'
+import PumpLiveFeed from './components/PumpLiveFeed'
 import HowItWorks from './components/HowItWorks'
 import Footer from './components/Footer'
 import AgentModal from './components/AgentModal'
@@ -139,6 +141,10 @@ export default function App() {
           agentCount={liveAgents.length}
           holders={stats.holders}
         />
+
+        {/* Live coin data from DexScreener + real-time pump.fun launches */}
+        <LiveMarkets />
+        <PumpLiveFeed />
 
         {/* Marketplace */}
         <section id="agents" className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
