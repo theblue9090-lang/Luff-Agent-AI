@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { agents as seedAgents, type Agent } from './data/agents'
-import { defaultNetwork, type Network } from './data/networks'
 import { useLivePrices } from './hooks/useLivePrices'
 import { useScrollReveal } from './hooks/useScrollReveal'
+import { useLuffWallet } from './wallet/wallet'
 import ScrollProgress from './components/ScrollProgress'
-import { formatUSD, formatNumber, shortAddress, generateAddress } from './lib/format'
+import { formatUSD, formatNumber } from './lib/format'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import StatsBar from './components/StatsBar'
@@ -19,12 +19,12 @@ import { usePumpFeed } from './hooks/usePumpFeed'
 import HowItWorks from './components/HowItWorks'
 import Footer from './components/Footer'
 import AgentModal from './components/AgentModal'
-import WalletModal from './components/WalletModal'
 import LaunchModal from './components/LaunchModal'
 import Toast from './components/Toast'
 
 export default function App() {
   useScrollReveal()
+  const wallet = useLuffWallet()
   const liveAgents = useLivePrices(seedAgents)
   const pump = usePumpFeed()
 
@@ -35,10 +35,7 @@ export default function App() {
   const [sort, setSort] = useState<SortKey>('trending')
   const [starred, setStarred] = useState<Set<string>>(new Set(['luffy']))
   const [selected, setSelected] = useState<Agent | null>(null)
-  const [walletOpen, setWalletOpen] = useState(false)
   const [launchOpen, setLaunchOpen] = useState(false)
-  const [connected, setConnected] = useState<string | null>(null)
-  const [network, setNetwork] = useState<Network>(defaultNetwork)
   const [toast, setToast] = useState<string | null>(null)
 
   const toggleStar = (id: string) =>
@@ -90,56 +87,21 @@ export default function App() {
   }, [liveAgents])
 
   // Handlers
-  const handleWalletSelect = (wallet: string) => {
-    const addr = shortAddress(generateAddress(network.addressType))
-    setConnected(addr)
-    setWalletOpen(false)
-    setToast(`${wallet} connected on ${network.name} · ${addr}`)
-  }
-
-  const handleConnect = () => {
-    if (connected) {
-      setConnected(null)
-      setToast('Wallet disconnected')
-    } else {
-      setWalletOpen(true)
-    }
-  }
-
-  const handleNetwork = (n: Network) => {
-    setNetwork(n)
-    if (connected) {
-      // re-derive an address for the newly selected chain
-      const addr = shortAddress(generateAddress(n.addressType))
-      setConnected(addr)
-      setToast(`Switched to ${n.name} · ${addr}`)
-    } else {
-      setToast(`Network set to ${n.name}`)
-    }
-  }
-
   const handleTrade = (side: 'buy' | 'sell', agent: Agent) => {
-    if (!connected) {
+    if (!wallet.authenticated) {
       setSelected(null)
-      setWalletOpen(true)
-      setToast('Connect a wallet to trade')
+      wallet.login()
+      setToast('Log in to trade')
       return
     }
     setSelected(null)
-    setToast(`${side === 'buy' ? 'Bought' : 'Sold'} $${agent.ticker} on ${network.name} · order simulated`)
+    setToast(`${side === 'buy' ? 'Bought' : 'Sold'} $${agent.ticker} on Solana · order simulated`)
   }
 
   return (
     <div className="min-h-screen">
       <ScrollProgress />
-      <Navbar
-        query={query}
-        onQuery={setQuery}
-        onConnect={handleConnect}
-        connected={connected}
-        network={network}
-        onNetwork={handleNetwork}
-      />
+      <Navbar query={query} onQuery={setQuery} />
 
       <main>
         <Hero onLaunch={() => setLaunchOpen(true)} />
@@ -240,9 +202,11 @@ export default function App() {
                 <button onClick={() => setLaunchOpen(true)} className="btn-primary">
                   Start earning
                 </button>
-                <button onClick={handleConnect} className="btn-ghost">
-                  {connected ? 'Wallet connected' : 'Connect wallet'}
-                </button>
+                {!wallet.authenticated && (
+                  <button onClick={wallet.login} className="btn-ghost">
+                    Log in
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -253,12 +217,6 @@ export default function App() {
 
       {/* Overlays */}
       <AgentModal agent={selected} onClose={() => setSelected(null)} onTrade={handleTrade} />
-      <WalletModal
-        open={walletOpen}
-        onClose={() => setWalletOpen(false)}
-        network={network}
-        onSelect={handleWalletSelect}
-      />
       <LaunchModal open={launchOpen} onClose={() => setLaunchOpen(false)} />
       <Toast message={toast} onDone={() => setToast(null)} />
     </div>

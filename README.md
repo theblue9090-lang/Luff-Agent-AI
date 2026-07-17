@@ -20,16 +20,12 @@ experience and rebuilt with a full red theme and the LUFF brand.
   SOL** and manage risk with **Take Profit / Stop Loss / trailing stop**, slippage,
   priority fee and market-cap filters. It opens positions automatically and closes them on
   triggers, with a live positions table, activity log and P&L / win-rate stats.
-  - **Live (mainnet):** two wallet options —
-    - **Privy managed wallet (recommended):** each user signs in (email / Google / X) and
-      Privy provisions them their own **embedded Solana wallet** — no seed phrase, no key to
-      paste. They deposit SOL to that address and the bot **auto-signs snipes with no popup**
-      (`embeddedWallets.showWalletUIs: false`) while the tab is open. Requires
-      `VITE_PRIVY_APP_ID`.
-    - **Burner key (advanced):** paste a dedicated burner private key (held only in-tab).
-    - Either way the bot signs and submits real transactions — **PumpPortal** for
-      bonding-curve pump.fun coins, **Jupiter** for routable/graduated tokens. TP/SL value
-      positions via Jupiter and auto-sell on trigger.
+  - **Live (mainnet):** uses the user's logged-in **Privy wallet** (same one shown in the
+    navbar / portfolio). They deposit SOL to its address and the bot **auto-signs snipes
+    with no popup** (`embeddedWallets.showWalletUIs: false`) while the tab is open — no
+    connect step. It signs and submits real transactions: **PumpPortal** for bonding-curve
+    pump.fun coins, **Jupiter** for routable/graduated tokens; TP/SL value positions via
+    Jupiter and auto-sell on trigger. Requires `VITE_PRIVY_APP_ID`.
   - **Simulation (default):** identical flow with simulated fills — battle-test strategies
     risk-free.
   - Files: `src/lib/sniperExecutor.ts` (executors + signer abstraction),
@@ -46,11 +42,14 @@ experience and rebuilt with a full red theme and the LUFF brand.
   **Trade** button that opens a modal with a **live DexScreener chart** and an embedded
   **Jupiter** swap so users can **buy/sell real Solana tokens** with their own wallet,
   without leaving the site. Buy/Sell toggle flips the swap direction (SOL ↔ token).
-- **Portfolio (real wallet)** — connect Phantom or paste any Solana address to load its
-  **real on-chain holdings** (native SOL + all SPL / Token-2022 tokens) read via RPC and
-  priced live from DexScreener: total value, 24h change, allocation bar and a per-asset
-  breakdown, auto-refreshing on an interval. A "preview demo portfolio" (with simulated
-  P&L) is available as a fallback. See `src/lib/solana.ts`,
+- **Sign in with Google / X (Privy)** — there is no "connect wallet" step. Users log in
+  with Google or X and Privy provisions them their own **embedded Solana wallet**
+  automatically (no seed phrase, no key to paste). The wallet is shared app-wide via a
+  small context (`src/wallet/wallet.tsx`) and shown in the navbar (`AuthButton`).
+- **Portfolio (real wallet)** — after login, the user's **real on-chain holdings**
+  (native SOL + all SPL / Token-2022 tokens) are read via RPC and priced live from
+  DexScreener: SOL balance, total value, 24h change, allocation bar and a per-asset
+  breakdown, auto-refreshing on an interval. See `src/lib/solana.ts`,
   `src/hooks/useWalletPortfolio.ts` and `src/components/Portfolio.tsx`.
 - **Info pages** — standalone **About**, **Docs** and **Agent SDK** pages (in `public/`)
   that open in a new tab, styled to match the app.

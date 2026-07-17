@@ -1,27 +1,15 @@
 import { useState } from 'react'
-import { Search, Menu, X, Wallet, Zap, ChevronDown } from 'lucide-react'
-import type { Network } from '../data/networks'
-import NetworkSwitcher from './NetworkSwitcher'
+import { Search, Menu, X, Zap } from 'lucide-react'
+import AuthButton from './AuthButton'
 
 interface NavbarProps {
   query: string
   onQuery: (q: string) => void
-  onConnect: () => void
-  connected: string | null
-  network: Network
-  onNetwork: (n: Network) => void
 }
 
 const NAV = ['Markets', 'Sniper', 'Portfolio', 'Launches', 'Agents', 'Genesis']
 
-export default function Navbar({
-  query,
-  onQuery,
-  onConnect,
-  connected,
-  network,
-  onNetwork,
-}: NavbarProps) {
+export default function Navbar({ query, onQuery }: NavbarProps) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -60,25 +48,16 @@ export default function Navbar({
           />
         </div>
 
-        {/* Network switcher */}
-        <NetworkSwitcher network={network} onChange={onNetwork} className="hidden sm:block" />
-
         {/* Points pill */}
-        <button className="hidden items-center gap-1.5 rounded-full border border-luff-border bg-white/[0.03] px-3 py-2 text-sm font-medium text-luff-text transition-colors hover:border-luff-red/40 lg:flex">
+        <button className="hidden items-center gap-1.5 rounded-full border border-luff-border bg-white/[0.03] px-3 py-2 text-sm font-medium text-luff-text transition-colors hover:border-luff-red/40 sm:flex">
           <Zap className="h-4 w-4 text-luff-ember" />
           2,480
         </button>
 
-        {/* Connect wallet */}
-        <button onClick={onConnect} className="btn-primary hidden items-center gap-2 sm:flex">
-          {connected ? (
-            <span className="h-2 w-2 rounded-full" style={{ background: network.color }} />
-          ) : (
-            <Wallet className="h-4 w-4" />
-          )}
-          {connected ? connected : 'Connect'}
-          {connected && <ChevronDown className="h-3.5 w-3.5" />}
-        </button>
+        {/* Auth / wallet */}
+        <div className="hidden sm:block">
+          <AuthButton />
+        </div>
 
         {/* Mobile menu toggle */}
         <button
@@ -114,18 +93,9 @@ export default function Navbar({
               </a>
             ))}
           </nav>
-          <div className="mt-3 flex items-center justify-between rounded-xl border border-luff-border bg-white/[0.03] px-3 py-2">
-            <span className="text-sm text-luff-muted">Network</span>
-            <NetworkSwitcher network={network} onChange={onNetwork} />
+          <div className="mt-3">
+            <AuthButton full />
           </div>
-          <button onClick={onConnect} className="btn-primary mt-3 flex w-full items-center justify-center gap-2">
-            {connected ? (
-              <span className="h-2 w-2 rounded-full" style={{ background: network.color }} />
-            ) : (
-              <Wallet className="h-4 w-4" />
-            )}
-            {connected ? connected : 'Connect Wallet'}
-          </button>
         </div>
       )}
     </header>

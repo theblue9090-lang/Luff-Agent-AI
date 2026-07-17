@@ -11,7 +11,7 @@ export const privyConfig: PrivyClientConfig = {
     logo: '/logo.svg',
     walletChainType: 'solana-only',
   },
-  loginMethods: ['email', 'google', 'twitter', 'wallet'],
+  loginMethods: ['google', 'twitter'],
   embeddedWallets: {
     // give every user a Solana wallet automatically on login
     solana: { createOnLogin: 'users-without-wallets' },
