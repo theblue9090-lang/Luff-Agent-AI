@@ -1,5 +1,5 @@
 import { useMemo, useState, type CSSProperties } from 'react'
-import { Connection, type Keypair } from '@solana/web3.js'
+import { Connection } from '@solana/web3.js'
 import {
   Crosshair,
   Play,
@@ -21,11 +21,15 @@ import {
   createSimExecutor,
   createLiveExecutor,
   parseKeypair,
+  keypairSigner,
   getSolBalance,
   type Executor,
   type LaunchCandidate,
+  type WalletSigner,
 } from '../lib/sniperExecutor'
 import { RPC_ENDPOINT } from '../lib/jupiter'
+import { PRIVY_ENABLED } from '../lib/privy'
+import PrivySniperWallet from './PrivySniperWallet'
 import { formatAgo, shortAddress } from '../lib/format'
 
 interface SniperBotProps {
@@ -33,28 +37,28 @@ interface SniperBotProps {
   feedLive: boolean
 }
 
-interface Burner {
-  keypair: Keypair
-  connection: Connection
-  pubkey: string
-}
-
 export default function SniperBot({ feedTokens, feedLive }: SniperBotProps) {
   const [config, setConfig] = useState<SniperConfig>(defaultConfig)
   const [running, setRunning] = useState(false)
 
-  // execution mode + burner wallet
+  // execution mode + wallet
   const [live, setLive] = useState(false)
+  const [method, setMethod] = useState<'privy' | 'burner'>(PRIVY_ENABLED ? 'privy' : 'burner')
   const [rpc, setRpc] = useState(RPC_ENDPOINT)
+  const connection = useMemo(() => new Connection(rpc, 'confirmed'), [rpc])
+
+  const [privySigner, setPrivySigner] = useState<WalletSigner | null>(null)
   const [secret, setSecret] = useState('')
-  const [burner, setBurner] = useState<Burner | null>(null)
+  const [burnerSigner, setBurnerSigner] = useState<WalletSigner | null>(null)
+  const [burnerPubkey, setBurnerPubkey] = useState<string | null>(null)
   const [balance, setBalance] = useState<number | null>(null)
   const [walletErr, setWalletErr] = useState<string | null>(null)
 
-  const liveActive = live && !!burner
+  const activeSigner = method === 'privy' ? privySigner : burnerSigner
+  const liveActive = live && !!activeSigner
   const executor = useMemo<Executor>(
-    () => (liveActive && burner ? createLiveExecutor(burner.keypair, burner.connection) : createSimExecutor()),
-    [liveActive, burner],
+    () => (liveActive && activeSigner ? createLiveExecutor(activeSigner, connection) : createSimExecutor()),
+    [liveActive, activeSigner, connection],
   )
 
   const dexNew = useDexNewCoins(running && config.mode === 'new' && config.sources.dex)
@@ -79,23 +83,23 @@ export default function SniperBot({ feedTokens, feedLive }: SniperBotProps) {
     setWalletErr(null)
     try {
       const keypair = parseKeypair(secret)
-      const connection = new Connection(rpc, 'confirmed')
-      const b: Burner = { keypair, connection, pubkey: keypair.publicKey.toBase58() }
-      setBurner(b)
+      setBurnerSigner(keypairSigner(keypair))
+      setBurnerPubkey(keypair.publicKey.toBase58())
       const bal = await getSolBalance(connection, keypair.publicKey).catch(() => null)
       setBalance(bal)
     } catch (e) {
-      setBurner(null)
+      setBurnerSigner(null)
+      setBurnerPubkey(null)
       setWalletErr(e instanceof Error ? e.message : 'Invalid private key')
     }
   }
 
   const disconnectBurner = () => {
-    if (running) setRunning(false)
-    setBurner(null)
+    if (running && method === 'burner') setRunning(false)
+    setBurnerSigner(null)
+    setBurnerPubkey(null)
     setBalance(null)
     setSecret('')
-    setLive(false)
   }
 
   const canStart = !live || liveActive
@@ -150,43 +154,74 @@ export default function SniperBot({ feedTokens, feedLive }: SniperBotProps) {
           </div>
 
           {live && (
-            <div className="mb-4 rounded-xl border border-luff-red/30 bg-luff-red/5 p-3">
-              <p className="mb-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-luff-down">
-                <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                Live mode signs real transactions with a <b>burner</b> key held only in this tab.
-                Use a dedicated wallet with minimal SOL — never your main wallet.
-              </p>
-              {!burner ? (
-                <>
-                  <Label>RPC endpoint</Label>
-                  <input
-                    value={rpc}
-                    onChange={(e) => setRpc(e.target.value)}
-                    className="mb-2 w-full rounded-lg border border-luff-border bg-white/[0.03] px-3 py-2 font-mono text-xs outline-none focus:border-luff-red/50"
-                  />
-                  <Label>Burner private key</Label>
-                  <input
-                    type="password"
-                    value={secret}
-                    onChange={(e) => setSecret(e.target.value)}
-                    placeholder="base58 or [1,2,3,…]"
-                    className="w-full rounded-lg border border-luff-border bg-white/[0.03] px-3 py-2 font-mono text-xs outline-none focus:border-luff-red/50"
-                  />
-                  {walletErr && <p className="mt-1 text-[11px] text-luff-down">{walletErr}</p>}
-                  <button onClick={connectBurner} disabled={!secret} className="btn-primary mt-2 flex w-full items-center justify-center gap-2 text-sm disabled:opacity-40">
-                    <Wallet className="h-4 w-4" /> Connect burner
+            <div className="mb-4 space-y-3 rounded-xl border border-luff-red/30 bg-luff-red/5 p-3">
+              {/* RPC (shared) */}
+              <div>
+                <Label>RPC endpoint</Label>
+                <input
+                  value={rpc}
+                  onChange={(e) => setRpc(e.target.value)}
+                  className="w-full rounded-lg border border-luff-border bg-white/[0.03] px-3 py-2 font-mono text-xs outline-none focus:border-luff-red/50"
+                />
+              </div>
+
+              {/* Wallet method */}
+              <div className="inline-flex w-full rounded-lg border border-luff-border bg-white/[0.03] p-1">
+                {(['privy', 'burner'] as const).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setMethod(m)}
+                    className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                      method === m ? 'bg-red-grad text-white' : 'text-luff-muted hover:text-luff-text'
+                    }`}
+                  >
+                    {m === 'privy' ? 'Privy wallet' : 'Burner key'}
                   </button>
-                </>
+                ))}
+              </div>
+
+              {method === 'privy' ? (
+                PRIVY_ENABLED ? (
+                  <PrivySniperWallet connection={connection} onSigner={setPrivySigner} />
+                ) : (
+                  <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-luff-ember">
+                    <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    Set <code className="mx-1 rounded bg-white/10 px-1">VITE_PRIVY_APP_ID</code> (from
+                    dashboard.privy.io) to give every user a managed, no-key sniper wallet.
+                  </p>
+                )
               ) : (
-                <div className="flex items-center justify-between">
-                  <div className="text-xs">
-                    <div className="font-mono">{shortAddress(burner.pubkey)}</div>
-                    <div className="text-luff-muted">{balance != null ? `${balance.toFixed(3)} SOL` : '—'}</div>
-                  </div>
-                  <button onClick={disconnectBurner} className="inline-flex items-center gap-1 rounded-full border border-luff-border px-2.5 py-1 text-xs text-luff-muted hover:border-luff-down/50 hover:text-luff-down">
-                    <LogOut className="h-3 w-3" /> Remove
-                  </button>
-                </div>
+                <>
+                  <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-luff-down">
+                    <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    Burner key is held only in this tab. Use a dedicated wallet with minimal SOL.
+                  </p>
+                  {!burnerSigner ? (
+                    <>
+                      <input
+                        type="password"
+                        value={secret}
+                        onChange={(e) => setSecret(e.target.value)}
+                        placeholder="base58 or [1,2,3,…]"
+                        className="w-full rounded-lg border border-luff-border bg-white/[0.03] px-3 py-2 font-mono text-xs outline-none focus:border-luff-red/50"
+                      />
+                      {walletErr && <p className="text-[11px] text-luff-down">{walletErr}</p>}
+                      <button onClick={connectBurner} disabled={!secret} className="btn-primary flex w-full items-center justify-center gap-2 text-sm disabled:opacity-40">
+                        <Wallet className="h-4 w-4" /> Connect burner
+                      </button>
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs">
+                        <div className="font-mono">{shortAddress(burnerPubkey || '')}</div>
+                        <div className="text-luff-muted">{balance != null ? `${balance.toFixed(3)} SOL` : '—'}</div>
+                      </div>
+                      <button onClick={disconnectBurner} className="inline-flex items-center gap-1 rounded-full border border-luff-border px-2.5 py-1 text-xs text-luff-muted hover:border-luff-down/50 hover:text-luff-down">
+                        <LogOut className="h-3 w-3" /> Remove
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -263,8 +298,10 @@ export default function SniperBot({ feedTokens, feedLive }: SniperBotProps) {
               </>
             )}
           </button>
-          {live && !burner && (
-            <p className="mt-2 text-center text-[11px] text-luff-ember">Connect a burner wallet to go live.</p>
+          {live && !activeSigner && (
+            <p className="mt-2 text-center text-[11px] text-luff-ember">
+              {method === 'privy' ? 'Sign in to your Privy wallet to go live.' : 'Connect a burner wallet to go live.'}
+            </p>
           )}
         </div>
 

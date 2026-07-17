@@ -20,14 +20,24 @@ experience and rebuilt with a full red theme and the LUFF brand.
   SOL** and manage risk with **Take Profit / Stop Loss / trailing stop**, slippage,
   priority fee and market-cap filters. It opens positions automatically and closes them on
   triggers, with a live positions table, activity log and P&L / win-rate stats.
-  - **Live (mainnet):** connect a **burner** wallet (private key held only in the tab) and
-    the bot signs and submits real transactions — **PumpPortal** for bonding-curve pump.fun
-    coins, **Jupiter** for routable/graduated tokens. TP/SL value positions via Jupiter and
-    auto-sell on trigger.
+  - **Live (mainnet):** two wallet options —
+    - **Privy managed wallet (recommended):** each user signs in (email / Google / X) and
+      Privy provisions them their own **embedded Solana wallet** — no seed phrase, no key to
+      paste. They deposit SOL to that address and the bot **auto-signs snipes with no popup**
+      (`embeddedWallets.showWalletUIs: false`) while the tab is open. Requires
+      `VITE_PRIVY_APP_ID`.
+    - **Burner key (advanced):** paste a dedicated burner private key (held only in-tab).
+    - Either way the bot signs and submits real transactions — **PumpPortal** for
+      bonding-curve pump.fun coins, **Jupiter** for routable/graduated tokens. TP/SL value
+      positions via Jupiter and auto-sell on trigger.
   - **Simulation (default):** identical flow with simulated fills — battle-test strategies
     risk-free.
-  - Files: `src/lib/sniperExecutor.ts` (executors), `src/hooks/useSniperBot.ts` (engine),
-    `src/hooks/useDexNewCoins.ts`, `src/components/SniperBot.tsx`.
+  - Files: `src/lib/sniperExecutor.ts` (executors + signer abstraction),
+    `src/hooks/useSniperBot.ts` (engine), `src/hooks/useDexNewCoins.ts`,
+    `src/components/SniperBot.tsx`, `src/components/PrivySniperWallet.tsx`, `src/lib/privy.ts`.
+  - **Fully unattended (tab closed):** the client integration auto-signs while the sniper
+    tab is open. For server-side execution with the tab closed, use Privy **session signers**
+    + a backend with `@privy-io/server-auth` — not included here.
   - ⚠️ **Live mode moves real funds and is unaudited.** Use a dedicated burner with minimal
     SOL, set a reliable `VITE_SOLANA_RPC`, and test with a tiny amount first. Sniping is
     high-risk (rugs, honeypots, MEV). Browser wallets can't auto-sign, hence the burner

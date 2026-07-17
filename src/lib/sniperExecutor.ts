@@ -58,6 +58,25 @@ export function parseKeypair(secret: string): Keypair {
   return Keypair.fromSecretKey(bs58.decode(s))
 }
 
+/**
+ * A signer abstraction so the executor can be driven by either a raw burner
+ * keypair or a managed embedded wallet (Privy) that signs without exposing keys.
+ */
+export interface WalletSigner {
+  publicKey: string
+  signAndSend(tx: VersionedTransaction, connection: Connection): Promise<string>
+}
+
+export function keypairSigner(keypair: Keypair): WalletSigner {
+  return {
+    publicKey: keypair.publicKey.toBase58(),
+    async signAndSend(tx, connection) {
+      tx.sign([keypair])
+      return connection.sendTransaction(tx, { skipPreflight: true, maxRetries: 3 })
+    },
+  }
+}
+
 export async function getSolBalance(connection: Connection, pubkey: PublicKey): Promise<number> {
   const lamports = await connection.getBalance(pubkey)
   return lamports / LAMPORTS_PER_SOL
@@ -105,8 +124,8 @@ const PUMP_TRADE = 'https://pumpportal.fun/api/trade-local'
  * transactions (PumpPortal for bonding-curve pump.fun coins, Jupiter for
  * routable/graduated tokens). USE A DEDICATED BURNER WITH MINIMAL FUNDS.
  */
-export function createLiveExecutor(keypair: Keypair, connection: Connection): Executor {
-  const owner = keypair.publicKey
+export function createLiveExecutor(signer: WalletSigner, connection: Connection): Executor {
+  const owner = new PublicKey(signer.publicKey)
 
   const tokenRaw = async (mint: string): Promise<number> => {
     try {
@@ -121,10 +140,7 @@ export function createLiveExecutor(keypair: Keypair, connection: Connection): Ex
     }
   }
 
-  const send = async (tx: VersionedTransaction): Promise<string> => {
-    tx.sign([keypair])
-    return connection.sendTransaction(tx, { skipPreflight: true, maxRetries: 3 })
-  }
+  const send = (tx: VersionedTransaction): Promise<string> => signer.signAndSend(tx, connection)
 
   const pumpTrade = async (
     mint: string,

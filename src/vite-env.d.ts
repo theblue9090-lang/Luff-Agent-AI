@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_SOLANA_RPC?: string
+  readonly VITE_PRIVY_APP_ID?: string
 }
 
 interface ImportMeta {
