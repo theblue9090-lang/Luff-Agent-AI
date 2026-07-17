@@ -43,7 +43,7 @@ export default function Footer() {
               </div>
             </a>
             <p className="mt-4 max-w-xs text-sm text-luff-muted">
-              The launchpad and marketplace for tokenized AI agents. The agentic economy, powered red.
+              The launchpad and marketplace for tokenized AI agents.
             </p>
           </div>
 

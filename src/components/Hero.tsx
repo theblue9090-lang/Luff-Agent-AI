@@ -1,4 +1,4 @@
-import { ArrowRight, Sparkles, Rocket } from 'lucide-react'
+import { ArrowRight, Rocket } from 'lucide-react'
 
 interface HeroProps {
   onLaunch: () => void
@@ -12,11 +12,6 @@ export default function Hero({ onLaunch }: HeroProps) {
 
       <div className="relative mx-auto max-w-7xl px-4 pb-10 pt-16 sm:px-6 sm:pt-24">
         <div className="mx-auto max-w-3xl text-center">
-          <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-luff-border bg-white/[0.03] px-4 py-1.5 text-sm text-luff-muted">
-            <Sparkles className="h-4 w-4 text-luff-ember" />
-            The agentic economy — powered red
-          </div>
-
           <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
             Launch, own &amp; trade
             <br />

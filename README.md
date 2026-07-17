@@ -1,7 +1,7 @@
 # LUFF AGENT
 
-**The agentic economy — powered red.** A launchpad and marketplace for tokenized AI agents,
-inspired by the Virtuals app experience and rebuilt with a full red theme and the LUFF brand.
+A launchpad and marketplace for tokenized AI agents, inspired by the Virtuals app
+experience and rebuilt with a full red theme and the LUFF brand.
 
 ![LUFF AGENT](public/logo.svg)
 
