@@ -1,8 +1,32 @@
-const LINKS = {
-  Product: ['Marketplace', 'Genesis', 'Leaderboard', 'Points', 'API'],
-  Developers: ['Docs', 'Agent SDK', 'GitHub', 'Bug Bounty'],
-  Company: ['About', 'Blog', 'Careers', 'Brand Kit'],
-  Community: ['X / Twitter', 'Discord', 'Telegram', 'Mirror'],
+interface FooterLink {
+  label: string
+  href: string
+}
+
+const LINKS: Record<string, FooterLink[]> = {
+  Product: [
+    { label: 'Marketplace', href: '#agents' },
+    { label: 'Genesis', href: '#genesis' },
+    { label: 'Markets', href: '#markets' },
+    { label: 'Points', href: '#points' },
+    { label: 'API', href: '#' },
+  ],
+  Developers: [
+    { label: 'Docs', href: '#docs' },
+    { label: 'Agent SDK', href: '#' },
+    { label: 'GitHub', href: '#' },
+    { label: 'Bug Bounty', href: '#' },
+  ],
+  Company: [
+    { label: 'About', href: '#' },
+    { label: 'Blog', href: '#' },
+    { label: 'Careers', href: '#' },
+    { label: 'Brand Kit', href: '#' },
+  ],
+  Community: [
+    { label: 'X', href: 'https://x.com/luffagent/' },
+    { label: 'Telegram', href: 'https://t.me/luffagent/' },
+  ],
 }
 
 export default function Footer() {
@@ -27,13 +51,20 @@ export default function Footer() {
             <div key={group}>
               <h4 className="text-sm font-semibold">{group}</h4>
               <ul className="mt-3 space-y-2">
-                {items.map((i) => (
-                  <li key={i}>
-                    <a href="#" className="text-sm text-luff-muted transition-colors hover:text-luff-red">
-                      {i}
-                    </a>
-                  </li>
-                ))}
+                {items.map((item) => {
+                  const external = item.href.startsWith('http')
+                  return (
+                    <li key={item.label}>
+                      <a
+                        href={item.href}
+                        {...(external ? { target: '_blank', rel: 'noreferrer' } : {})}
+                        className="text-sm text-luff-muted transition-colors hover:text-luff-red"
+                      >
+                        {item.label}
+                      </a>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           ))}
