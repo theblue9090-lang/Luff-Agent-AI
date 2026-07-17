@@ -1,4 +1,5 @@
-import { useState, type CSSProperties } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
+import { Connection, type Keypair } from '@solana/web3.js'
 import {
   Crosshair,
   Play,
@@ -10,23 +11,98 @@ import {
   Target,
   TriangleAlert,
   Radio,
+  Wallet,
+  LogOut,
 } from 'lucide-react'
 import type { PumpToken } from '../hooks/usePumpFeed'
 import { useSniperBot, defaultConfig, type SniperConfig, type Position } from '../hooks/useSniperBot'
-import { formatAgo } from '../lib/format'
+import { useDexNewCoins } from '../hooks/useDexNewCoins'
+import {
+  createSimExecutor,
+  createLiveExecutor,
+  parseKeypair,
+  getSolBalance,
+  type Executor,
+  type LaunchCandidate,
+} from '../lib/sniperExecutor'
+import { RPC_ENDPOINT } from '../lib/jupiter'
+import { formatAgo, shortAddress } from '../lib/format'
 
 interface SniperBotProps {
   feedTokens: PumpToken[]
   feedLive: boolean
 }
 
+interface Burner {
+  keypair: Keypair
+  connection: Connection
+  pubkey: string
+}
+
 export default function SniperBot({ feedTokens, feedLive }: SniperBotProps) {
   const [config, setConfig] = useState<SniperConfig>(defaultConfig)
   const [running, setRunning] = useState(false)
-  const bot = useSniperBot(running, config, feedTokens)
 
-  const set = <K extends keyof SniperConfig>(k: K, v: SniperConfig[K]) =>
-    setConfig((c) => ({ ...c, [k]: v }))
+  // execution mode + burner wallet
+  const [live, setLive] = useState(false)
+  const [rpc, setRpc] = useState(RPC_ENDPOINT)
+  const [secret, setSecret] = useState('')
+  const [burner, setBurner] = useState<Burner | null>(null)
+  const [balance, setBalance] = useState<number | null>(null)
+  const [walletErr, setWalletErr] = useState<string | null>(null)
+
+  const liveActive = live && !!burner
+  const executor = useMemo<Executor>(
+    () => (liveActive && burner ? createLiveExecutor(burner.keypair, burner.connection) : createSimExecutor()),
+    [liveActive, burner],
+  )
+
+  const dexNew = useDexNewCoins(running && config.mode === 'new' && config.sources.dex)
+  const candidates = useMemo<LaunchCandidate[]>(() => {
+    const pump: LaunchCandidate[] = feedTokens.map((t) => ({
+      mint: t.mint,
+      symbol: t.symbol,
+      name: t.name,
+      marketCapSol: t.marketCapSol,
+      creator: t.creator,
+      source: 'pump',
+      pool: t.pool,
+    }))
+    return [...pump, ...dexNew]
+  }, [feedTokens, dexNew])
+
+  const bot = useSniperBot(running, config, candidates, executor)
+
+  const set = <K extends keyof SniperConfig>(k: K, v: SniperConfig[K]) => setConfig((c) => ({ ...c, [k]: v }))
+
+  const connectBurner = async () => {
+    setWalletErr(null)
+    try {
+      const keypair = parseKeypair(secret)
+      const connection = new Connection(rpc, 'confirmed')
+      const b: Burner = { keypair, connection, pubkey: keypair.publicKey.toBase58() }
+      setBurner(b)
+      const bal = await getSolBalance(connection, keypair.publicKey).catch(() => null)
+      setBalance(bal)
+    } catch (e) {
+      setBurner(null)
+      setWalletErr(e instanceof Error ? e.message : 'Invalid private key')
+    }
+  }
+
+  const disconnectBurner = () => {
+    if (running) setRunning(false)
+    setBurner(null)
+    setBalance(null)
+    setSecret('')
+    setLive(false)
+  }
+
+  const canStart = !live || liveActive
+  const toggleRun = () => {
+    if (!canStart) return
+    setRunning((r) => !r)
+  }
 
   return (
     <section id="sniper" className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
@@ -38,20 +114,84 @@ export default function SniperBot({ feedTokens, feedLive }: SniperBotProps) {
           </div>
           <h2 className="font-display text-2xl font-bold sm:text-3xl">Snipe launches on autopilot</h2>
           <p className="mt-1 text-sm text-luff-muted">
-            Auto-buy new coins the instant they mint — or only from a specific dev — with built-in
-            TP / SL risk management.
+            Auto-buy new coins from pump.fun / DexScreener or a specific dev — with TP / SL risk
+            management, on mainnet or in simulation.
           </p>
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-luff-ember/40 bg-luff-ember/10 px-3 py-1.5 text-xs font-medium text-luff-ember">
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium ${
+            liveActive
+              ? 'border-luff-red/50 bg-luff-red/10 text-luff-red'
+              : 'border-luff-ember/40 bg-luff-ember/10 text-luff-ember'
+          }`}
+        >
           <ShieldAlert className="h-3.5 w-3.5" />
-          Simulation
+          {liveActive ? 'LIVE · Mainnet' : 'Simulation'}
         </span>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,380px)_1fr]" data-reveal="scale">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,400px)_1fr]" data-reveal="scale">
         {/* ---- Config ---- */}
         <div className="glass rounded-2xl p-5">
-          {/* Mode */}
+          {/* Execution mode */}
+          <Label>Execution</Label>
+          <div className="mb-4 inline-flex w-full rounded-xl border border-luff-border bg-white/[0.03] p-1">
+            {([false, true] as const).map((v) => (
+              <button
+                key={String(v)}
+                onClick={() => setLive(v)}
+                className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+                  live === v ? 'bg-red-grad text-white' : 'text-luff-muted hover:text-luff-text'
+                }`}
+              >
+                {v ? 'Live (mainnet)' : 'Simulation'}
+              </button>
+            ))}
+          </div>
+
+          {live && (
+            <div className="mb-4 rounded-xl border border-luff-red/30 bg-luff-red/5 p-3">
+              <p className="mb-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-luff-down">
+                <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                Live mode signs real transactions with a <b>burner</b> key held only in this tab.
+                Use a dedicated wallet with minimal SOL — never your main wallet.
+              </p>
+              {!burner ? (
+                <>
+                  <Label>RPC endpoint</Label>
+                  <input
+                    value={rpc}
+                    onChange={(e) => setRpc(e.target.value)}
+                    className="mb-2 w-full rounded-lg border border-luff-border bg-white/[0.03] px-3 py-2 font-mono text-xs outline-none focus:border-luff-red/50"
+                  />
+                  <Label>Burner private key</Label>
+                  <input
+                    type="password"
+                    value={secret}
+                    onChange={(e) => setSecret(e.target.value)}
+                    placeholder="base58 or [1,2,3,…]"
+                    className="w-full rounded-lg border border-luff-border bg-white/[0.03] px-3 py-2 font-mono text-xs outline-none focus:border-luff-red/50"
+                  />
+                  {walletErr && <p className="mt-1 text-[11px] text-luff-down">{walletErr}</p>}
+                  <button onClick={connectBurner} disabled={!secret} className="btn-primary mt-2 flex w-full items-center justify-center gap-2 text-sm disabled:opacity-40">
+                    <Wallet className="h-4 w-4" /> Connect burner
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="text-xs">
+                    <div className="font-mono">{shortAddress(burner.pubkey)}</div>
+                    <div className="text-luff-muted">{balance != null ? `${balance.toFixed(3)} SOL` : '—'}</div>
+                  </div>
+                  <button onClick={disconnectBurner} className="inline-flex items-center gap-1 rounded-full border border-luff-border px-2.5 py-1 text-xs text-luff-muted hover:border-luff-down/50 hover:text-luff-down">
+                    <LogOut className="h-3 w-3" /> Remove
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Target */}
           <Label>Target</Label>
           <div className="mb-4 inline-flex w-full rounded-xl border border-luff-border bg-white/[0.03] p-1">
             {(['new', 'dev'] as const).map((m) => (
@@ -67,7 +207,12 @@ export default function SniperBot({ feedTokens, feedLive }: SniperBotProps) {
             ))}
           </div>
 
-          {config.mode === 'dev' && (
+          {config.mode === 'new' ? (
+            <div className="mb-4 flex gap-2">
+              <SourceChip label="pump.fun" active={config.sources.pump} onClick={() => set('sources', { ...config.sources, pump: !config.sources.pump })} />
+              <SourceChip label="DexScreener" active={config.sources.dex} onClick={() => set('sources', { ...config.sources, dex: !config.sources.dex })} />
+            </div>
+          ) : (
             <div className="mb-4">
               <Label>Dev wallet address</Label>
               <input
@@ -76,30 +221,20 @@ export default function SniperBot({ feedTokens, feedLive }: SniperBotProps) {
                 placeholder="Paste the dev's Solana address…"
                 className="w-full rounded-xl border border-luff-border bg-white/[0.03] px-3 py-2.5 font-mono text-xs outline-none focus:border-luff-red/50"
               />
-              <p className="mt-1 text-[11px] text-luff-muted/70">
-                Only snipes coins created by this wallet.
-              </p>
+              <p className="mt-1 text-[11px] text-luff-muted/70">Only snipes coins created by this wallet.</p>
             </div>
           )}
 
-          {/* Buy amount */}
-          <Num label="Buy amount (SOL)" value={config.buySol} step={0.1} min={0.01}
-            onChange={(v) => set('buySol', v)} presets={[0.25, 0.5, 1, 2]} onPreset={(v) => set('buySol', v)} />
+          <Num label="Buy amount (SOL)" value={config.buySol} step={0.1} min={0.01} onChange={(v) => set('buySol', v)} presets={[0.25, 0.5, 1, 2]} onPreset={(v) => set('buySol', v)} />
 
-          {/* TP / SL */}
           <div className="grid grid-cols-2 gap-3">
-            <Num label="Take Profit %" value={config.takeProfit} step={5} min={1} accent="up"
-              onChange={(v) => set('takeProfit', v)} />
-            <Num label="Stop Loss %" value={config.stopLoss} step={5} min={1} accent="down"
-              onChange={(v) => set('stopLoss', v)} />
+            <Num label="Take Profit %" value={config.takeProfit} step={5} min={1} accent="up" onChange={(v) => set('takeProfit', v)} />
+            <Num label="Stop Loss %" value={config.stopLoss} step={5} min={1} accent="down" onChange={(v) => set('stopLoss', v)} />
           </div>
 
-          <Toggle label="Trailing stop" hint="Trail the stop from the peak price"
-            checked={config.trailing} onChange={(v) => set('trailing', v)} />
-          <Toggle label="Auto-sell (TP / SL)" hint="Close positions automatically on triggers"
-            checked={config.autoSell} onChange={(v) => set('autoSell', v)} />
+          <Toggle label="Trailing stop" hint="Trail the stop from the peak price" checked={config.trailing} onChange={(v) => set('trailing', v)} />
+          <Toggle label="Auto-sell (TP / SL)" hint="Close positions automatically on triggers" checked={config.autoSell} onChange={(v) => set('autoSell', v)} />
 
-          {/* Advanced */}
           <div className="mt-2 grid grid-cols-2 gap-3">
             <Num label="Max slippage %" value={config.maxSlippage} step={1} min={0} onChange={(v) => set('maxSlippage', v)} />
             <Num label="Priority fee (SOL)" value={config.priorityFee} step={0.001} min={0} onChange={(v) => set('priorityFee', v)} />
@@ -109,10 +244,10 @@ export default function SniperBot({ feedTokens, feedLive }: SniperBotProps) {
             <Num label="Max mcap (SOL)" value={config.maxMcapSol} step={10} min={1} onChange={(v) => set('maxMcapSol', v)} />
           </div>
 
-          {/* Start / Stop */}
           <button
-            onClick={() => setRunning((r) => !r)}
-            className={`mt-5 flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 font-semibold transition-all active:scale-95 ${
+            onClick={toggleRun}
+            disabled={!canStart}
+            className={`mt-5 flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 font-semibold transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${
               running
                 ? 'border border-luff-down/50 bg-luff-down/15 text-luff-down hover:bg-luff-down/25'
                 : 'bg-red-grad text-white shadow-glow-sm hover:shadow-glow'
@@ -124,23 +259,19 @@ export default function SniperBot({ feedTokens, feedLive }: SniperBotProps) {
               </>
             ) : (
               <>
-                <Play className="h-4 w-4" /> Start sniping
+                <Play className="h-4 w-4" /> {liveActive ? 'Start sniping (LIVE)' : 'Start sniping'}
               </>
             )}
           </button>
-
-          <p className="mt-3 flex items-start gap-1.5 text-[11px] leading-relaxed text-luff-muted/70">
-            <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-luff-ember" />
-            Runs in real-time simulation to battle-test strategies risk-free. Live execution with real
-            SOL requires a funded executor wallet + backend signer (browser wallets can’t auto-sign).
-          </p>
+          {live && !burner && (
+            <p className="mt-2 text-center text-[11px] text-luff-ember">Connect a burner wallet to go live.</p>
+          )}
         </div>
 
         {/* ---- Monitor ---- */}
         <div className="flex flex-col gap-4">
-          <StatsRow bot={bot} running={running} feedLive={feedLive} config={config} />
+          <StatsRow bot={bot} running={running} feedLive={feedLive} config={config} liveActive={liveActive} />
 
-          {/* Positions */}
           <div className="glass overflow-hidden rounded-2xl">
             <div className="flex items-center justify-between border-b border-luff-border px-4 py-3">
               <div className="flex items-center gap-2 text-sm font-semibold">
@@ -176,7 +307,6 @@ export default function SniperBot({ feedTokens, feedLive }: SniperBotProps) {
             )}
           </div>
 
-          {/* Activity log */}
           <div className="glass overflow-hidden rounded-2xl">
             <div className="flex items-center justify-between border-b border-luff-border px-4 py-3">
               <div className="flex items-center gap-2 text-sm font-semibold">
@@ -215,36 +345,34 @@ function StatsRow({
   running,
   feedLive,
   config,
+  liveActive,
 }: {
   bot: ReturnType<typeof useSniperBot>
   running: boolean
   feedLive: boolean
   config: SniperConfig
+  liveActive: boolean
 }) {
   const tiles = [
-    {
-      label: 'Total P&L',
-      value: `${bot.stats.total >= 0 ? '+' : ''}${bot.stats.total.toFixed(3)} SOL`,
-      positive: bot.stats.total >= 0,
-    },
+    { label: 'Total P&L', value: `${bot.stats.total >= 0 ? '+' : ''}${bot.stats.total.toFixed(3)} SOL`, positive: bot.stats.total >= 0 },
     { label: 'Win rate', value: `${bot.stats.winRate.toFixed(0)}%` },
     { label: 'Snipes', value: `${bot.stats.snipes}` },
     { label: 'Open', value: `${bot.stats.open.length}` },
   ]
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <div className="col-span-2 flex items-center justify-between rounded-2xl border border-luff-border bg-white/[0.02] px-4 py-3 sm:col-span-4">
+      <div className="col-span-2 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-luff-border bg-white/[0.02] px-4 py-3 sm:col-span-4">
         <div className="flex items-center gap-2 text-sm">
           <span className={`relative flex h-2.5 w-2.5 ${running ? '' : 'opacity-40'}`}>
             {running && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-luff-red/70" />}
             <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${running ? 'bg-luff-red' : 'bg-luff-muted'}`} />
           </span>
-          <span className="font-semibold">{running ? 'Bot running' : 'Bot idle'}</span>
+          <span className="font-semibold">{running ? (liveActive ? 'Live sniping' : 'Bot running') : 'Bot idle'}</span>
           <span className="text-luff-muted">
             · {config.mode === 'dev' ? 'Dev sniper' : 'New launches'} · {config.buySol} SOL / snipe
           </span>
         </div>
-        <span className="hidden items-center gap-1.5 text-xs text-luff-muted sm:flex">
+        <span className="flex items-center gap-1.5 text-xs text-luff-muted">
           <Zap className={`h-3.5 w-3.5 ${feedLive ? 'text-luff-up' : 'text-luff-ember'}`} />
           pump.fun feed {feedLive ? 'live' : 'offline'}
         </span>
@@ -252,11 +380,7 @@ function StatsRow({
       {tiles.map((t) => (
         <div key={t.label} className="rounded-2xl border border-luff-border bg-white/[0.02] p-4">
           <div className="text-xs text-luff-muted">{t.label}</div>
-          <div
-            className={`mt-1 font-display text-lg font-bold ${
-              t.positive === undefined ? '' : t.positive ? 'text-luff-up' : 'text-luff-down'
-            }`}
-          >
+          <div className={`mt-1 font-display text-lg font-bold ${t.positive === undefined ? '' : t.positive ? 'text-luff-up' : 'text-luff-down'}`}>
             {t.value}
           </div>
         </div>
@@ -266,12 +390,17 @@ function StatsRow({
 }
 
 function PositionRow({ p, onSell }: { p: Position; onSell: () => void }) {
-  const pct = (p.price / p.entry - 1) * 100
+  const pct = (p.valueSol / p.entryValueSol - 1) * 100
   const up = pct >= 0
   return (
     <tr className="border-b border-luff-border/50 last:border-0">
       <td className="px-4 py-2.5">
-        <div className="font-semibold">{p.symbol}</div>
+        <div className="flex items-center gap-1.5">
+          <span className="font-semibold">{p.symbol}</span>
+          <span className="chip border-luff-border bg-white/[0.03] px-1.5 py-0 text-[10px] text-luff-muted">
+            {p.source === 'pump' ? 'PUMP' : 'DEX'}
+          </span>
+        </div>
         <div className="text-[11px] text-luff-muted">{formatAgo(p.openedAt)}</div>
       </td>
       <td className="px-4 py-2.5 text-right tabular-nums text-luff-muted">{p.amountSol} SOL</td>
@@ -280,14 +409,22 @@ function PositionRow({ p, onSell }: { p: Position; onSell: () => void }) {
         {pct.toFixed(1)}%
       </td>
       <td className="px-4 py-2.5 text-right">
-        <button
-          onClick={onSell}
-          className="rounded-full border border-luff-border px-3 py-1 text-xs text-luff-muted transition-colors hover:border-luff-down/50 hover:text-luff-down"
-        >
+        <button onClick={onSell} className="rounded-full border border-luff-border px-3 py-1 text-xs text-luff-muted transition-colors hover:border-luff-down/50 hover:text-luff-down">
           Sell
         </button>
       </td>
     </tr>
+  )
+}
+
+function SourceChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`chip flex-1 transition-all ${active ? 'border-luff-red/60 bg-luff-red/15 text-luff-text' : 'border-luff-border bg-white/[0.02] text-luff-muted hover:text-luff-text'}`}
+    >
+      {label}
+    </button>
   )
 }
 
@@ -348,35 +485,21 @@ function Num({
   )
 }
 
-function Toggle({
-  label,
-  hint,
-  checked,
-  onChange,
-}: {
-  label: string
-  hint?: string
-  checked: boolean
-  onChange: (v: boolean) => void
-}) {
+function Toggle({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <button onClick={() => onChange(!checked)} className="mb-2 flex w-full items-center justify-between rounded-xl border border-luff-border bg-white/[0.02] px-3 py-2.5 text-left">
       <span>
         <span className="block text-sm font-medium">{label}</span>
         {hint && <span className="block text-[11px] text-luff-muted">{hint}</span>}
       </span>
-      <span
-        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${checked ? 'bg-red-grad' : 'bg-white/10'}`}
-      >
-        <span
-          className="absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all"
-          style={{ left: checked ? '22px' : '2px' } as CSSProperties}
-        />
+      <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${checked ? 'bg-red-grad' : 'bg-white/10'}`}>
+        <span className="absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all" style={{ left: checked ? '22px' : '2px' } as CSSProperties} />
       </span>
     </button>
   )
 }
 
+type LogKind = 'buy' | 'sell' | 'skip' | 'info'
 function logColor(kind: LogKind): string {
   switch (kind) {
     case 'buy':
@@ -389,7 +512,6 @@ function logColor(kind: LogKind): string {
       return 'text-luff-red'
   }
 }
-type LogKind = 'buy' | 'sell' | 'skip' | 'info'
 function logTag(kind: LogKind): string {
   return kind === 'buy' ? 'BUY ' : kind === 'sell' ? 'SELL' : kind === 'skip' ? 'SKIP' : 'INFO'
 }

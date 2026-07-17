@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { PumpToken } from './usePumpFeed'
+import type { Executor, LaunchCandidate, Source } from '../lib/sniperExecutor'
 
 export interface SniperConfig {
   mode: 'new' | 'dev'
@@ -13,7 +13,7 @@ export interface SniperConfig {
   minMcapSol: number
   maxMcapSol: number
   autoSell: boolean
-  live: boolean
+  sources: { pump: boolean; dex: boolean }
 }
 
 export const defaultConfig: SniperConfig = {
@@ -28,7 +28,7 @@ export const defaultConfig: SniperConfig = {
   minMcapSol: 0,
   maxMcapSol: 500,
   autoSell: true,
-  live: false,
+  sources: { pump: true, dex: true },
 }
 
 export type ExitReason = 'TP' | 'SL' | 'Trail' | 'Manual'
@@ -38,16 +38,20 @@ export interface Position {
   mint: string
   symbol: string
   name: string
+  source: Source
   amountSol: number
-  entry: number
-  price: number
-  peak: number
+  tokenAmount: number
+  entryValueSol: number
+  valueSol: number
+  peakSol: number
   openedAt: number
   status: 'open' | 'closed'
   exitReason?: ExitReason
   pnlPct?: number
   pnlSol?: number
   closedAt?: number
+  buySig?: string
+  sellSig?: string
 }
 
 export interface LogEntry {
@@ -62,16 +66,21 @@ const uid = () => `${Date.now().toString(36)}-${counter++}`
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 const randAddr = () => Array.from({ length: 44 }, () => B58[Math.floor(Math.random() * B58.length)]).join('')
 const SYMS = ['PEPE', 'DOGE', 'WIF', 'BONK', 'SLERF', 'MOON', 'CHAD', 'WOJAK', 'FLOKI', 'MEW', 'POPCAT', 'GIGA', 'SIGMA', 'APU', 'PYRE', 'BLAZE', 'RONIN', 'MAGMA', 'EMBER', 'SCRLT']
-const NAMES = ['Pepe', 'Doge', 'Wif', 'Bonk', 'Moon', 'Chad', 'Cat', 'Giga', 'Sigma', 'Rocket', 'Ember', 'Blaze', 'Pyre', 'Scarlet', 'Crimson', 'Ronin', 'Magma', 'Inferno', 'Phoenix', 'Vermilion']
+const NAMES = ['Pepe', 'Doge', 'Wif', 'Bonk', 'Moon', 'Chad', 'Cat', 'Giga', 'Rocket', 'Ember', 'Blaze', 'Pyre', 'Scarlet', 'Crimson', 'Ronin', 'Magma', 'Inferno', 'Phoenix']
 const pick = <T,>(a: T[]): T => a[Math.floor(Math.random() * a.length)]
 
 /**
- * Real-time sniper engine. When running, it snipes matching launches from the
- * live pump.fun feed (and, in simulation, from synthetic launches) — opening
- * positions automatically and closing them on TP / SL / trailing rules with no
- * manual step. Outcomes are simulated so strategies can be battle-tested safely.
+ * Auto-executing sniper engine. Consumes a stream of launch candidates
+ * (pump.fun / DexScreener / dev address) and, when running, buys matching
+ * launches through the injected executor (simulation or live mainnet), then
+ * manages each position with TP / SL / trailing — all with no manual step.
  */
-export function useSniperBot(running: boolean, config: SniperConfig, feedTokens: PumpToken[]) {
+export function useSniperBot(
+  running: boolean,
+  config: SniperConfig,
+  candidates: LaunchCandidate[],
+  executor: Executor,
+) {
   const [positions, setPositions] = useState<Position[]>([])
   const [log, setLog] = useState<LogEntry[]>([])
 
@@ -79,159 +88,179 @@ export function useSniperBot(running: boolean, config: SniperConfig, feedTokens:
   cfg.current = config
   const isRunning = useRef(running)
   isRunning.current = running
+  const exec = useRef(executor)
+  exec.current = executor
+  const posRef = useRef<Position[]>([])
+  posRef.current = positions
+
   const processed = useRef<Set<string>>(new Set())
-  const startedAt = useRef(0)
+  const buying = useRef<Set<string>>(new Set())
+  const selling = useRef<Set<string>>(new Set())
+  const armed = useRef(false)
 
   const addLog = useCallback((kind: LogEntry['kind'], text: string) => {
     setLog((prev) => [{ id: uid(), ts: Date.now(), kind, text }, ...prev].slice(0, 80))
   }, [])
 
-  const tryBuy = useCallback(
-    (t: { mint: string; symbol: string; name: string; marketCapSol: number; creator?: string }) => {
-      const c = cfg.current
-      if (!isRunning.current || processed.current.has(t.mint)) return
+  const passesFilter = useCallback((c: LaunchCandidate): boolean => {
+    const co = cfg.current
+    if (co.mode === 'dev') return !!co.devAddress && c.creator === co.devAddress
+    if (c.source === 'pump' && !co.sources.pump) return false
+    if (c.source === 'dexscreener' && !co.sources.dex) return false
+    return true
+  }, [])
 
-      if (c.mode === 'dev' && (!c.devAddress || t.creator !== c.devAddress)) return
-
-      if (t.marketCapSol < c.minMcapSol || t.marketCapSol > c.maxMcapSol) {
-        processed.current.add(t.mint)
-        addLog('skip', `Skipped ${t.symbol} — ${t.marketCapSol.toFixed(1)} SOL mcap out of range`)
+  const consider = useCallback(
+    async (c: LaunchCandidate) => {
+      const co = cfg.current
+      if (!isRunning.current || processed.current.has(c.mint) || buying.current.has(c.mint)) return
+      if (!passesFilter(c)) return
+      if (c.source === 'pump' && (c.marketCapSol < co.minMcapSol || c.marketCapSol > co.maxMcapSol)) {
+        processed.current.add(c.mint)
+        addLog('skip', `Skipped ${c.symbol} — ${c.marketCapSol.toFixed(1)} SOL mcap out of range`)
         return
       }
 
-      processed.current.add(t.mint)
+      processed.current.add(c.mint)
+      buying.current.add(c.mint)
+      addLog('info', `${co.mode === 'dev' ? 'Dev match' : 'Target'} ${c.symbol} — buying ${co.buySol} SOL…`)
+
+      const res = await exec.current.buy(c, co.buySol, {
+        slippage: co.maxSlippage,
+        priorityFee: co.priorityFee,
+      })
+      buying.current.delete(c.mint)
+
+      if (!res.ok) {
+        addLog('skip', `Buy failed ${c.symbol} — ${res.error || 'unknown'}`)
+        return
+      }
+      const entry = res.entryValueSol ?? co.buySol
       const pos: Position = {
         id: uid(),
-        mint: t.mint,
-        symbol: t.symbol,
-        name: t.name,
-        amountSol: c.buySol,
-        entry: 1,
-        price: 1,
-        peak: 1,
+        mint: c.mint,
+        symbol: c.symbol,
+        name: c.name,
+        source: c.source,
+        amountSol: co.buySol,
+        tokenAmount: res.tokenAmount ?? co.buySol,
+        entryValueSol: entry,
+        valueSol: entry,
+        peakSol: entry,
         openedAt: Date.now(),
         status: 'open',
+        buySig: res.sig,
       }
       setPositions((prev) => [pos, ...prev].slice(0, 50))
-      addLog(
-        'buy',
-        `${c.mode === 'dev' ? 'Dev-sniped' : 'Sniped'} ${t.symbol} — bought ${c.buySol} SOL @ ${t.marketCapSol.toFixed(1)} SOL mcap`,
+      addLog('buy', `Bought ${c.symbol} — ${co.buySol} SOL${res.sig ? ` · ${res.sig.slice(0, 8)}…` : ''}`)
+    },
+    [addLog, passesFilter],
+  )
+
+  const closePosition = useCallback(
+    async (p: Position, reason: ExitReason) => {
+      if (selling.current.has(p.id)) return
+      selling.current.add(p.id)
+      const co = cfg.current
+      const res = await exec.current.sell(p.mint, p.tokenAmount, p.source, {
+        slippage: co.maxSlippage,
+        priorityFee: co.priorityFee,
+      })
+      selling.current.delete(p.id)
+
+      const exitVal = res.ok ? res.exitValueSol ?? p.valueSol : p.valueSol
+      const pnlSol = exitVal - p.entryValueSol
+      const pnlPct = (exitVal / p.entryValueSol - 1) * 100
+      setPositions((prev) =>
+        prev.map((x) =>
+          x.id === p.id && x.status === 'open'
+            ? { ...x, status: 'closed', exitReason: reason, valueSol: exitVal, pnlSol, pnlPct, closedAt: Date.now(), sellSig: res.sig }
+            : x,
+        ),
       )
+      if (res.ok) {
+        addLog('sell', `${reason} ${p.symbol} — ${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}% (${pnlSol >= 0 ? '+' : ''}${pnlSol.toFixed(3)} SOL)`)
+      } else {
+        addLog('skip', `Sell error ${p.symbol} — ${res.error || 'unknown'}`)
+      }
     },
     [addLog],
   )
 
-  // snapshot the start time so we only snipe launches that arrive after "Start"
+  // arm on start (skip backlog) then process new candidates
   useEffect(() => {
-    if (running) {
-      startedAt.current = Date.now()
+    if (!running) {
+      armed.current = false
+      return
+    }
+    if (!armed.current) {
+      candidates.forEach((c) => processed.current.add(c.mint))
+      armed.current = true
       addLog('info', 'Bot armed — watching for launches…')
-    } else if (startedAt.current) {
-      addLog('info', 'Bot stopped.')
+      return
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [running])
+    candidates.forEach((c) => void consider(c))
+  }, [running, candidates, consider, addLog])
 
-  // react to the real pump.fun feed
+  // simulated launches so the engine is demonstrable when not live
   useEffect(() => {
-    if (!running) return
-    for (const t of feedTokens) {
-      if (t.createdAt < startedAt.current) continue
-      tryBuy({ mint: t.mint, symbol: t.symbol, name: t.name, marketCapSol: t.marketCapSol, creator: t.creator })
-    }
-  }, [running, feedTokens, tryBuy])
-
-  // simulated launches so the engine is always demonstrable (sim mode only)
-  useEffect(() => {
-    if (!running || config.live) return
+    if (!running || exec.current.live) return
     const spawn = setInterval(() => {
-      const c = cfg.current
-      const symbol = pick(SYMS) + (Math.floor(Math.random() * 90) + 10)
+      const co = cfg.current
       const creator =
-        c.mode === 'dev' && c.devAddress && Math.random() < 0.6 ? c.devAddress : randAddr()
-      tryBuy({
+        co.mode === 'dev' && co.devAddress && Math.random() < 0.6 ? co.devAddress : randAddr()
+      void consider({
         mint: `sim-${uid()}`,
-        symbol,
+        symbol: pick(SYMS) + (Math.floor(Math.random() * 90) + 10),
         name: `${pick(NAMES)} ${pick(NAMES)}`,
         marketCapSol: +(Math.random() * 90 + 3).toFixed(1),
         creator,
+        source: Math.random() < 0.5 || !co.sources.dex ? 'pump' : 'dexscreener',
       })
     }, 3500)
     return () => clearInterval(spawn)
-  }, [running, config.live, tryBuy])
+  }, [running, consider])
 
-  // price engine — evolves open positions and auto-closes on TP / SL / trailing
+  // valuation + TP/SL loop
   useEffect(() => {
     if (!running) return
-    const tick = setInterval(() => {
-      const c = cfg.current
-      setPositions((prev) => {
-        const closed: Position[] = []
-        const next = prev.map((p) => {
-          if (p.status !== 'open') return p
-          const drift = (Math.random() < 0.52 ? 1 : -1) * 0.012
-          const price = Math.max(0.02, p.price * (1 + drift + (Math.random() - 0.5) * 0.1))
-          const peak = Math.max(p.peak, price)
-          const pct = (price / p.entry - 1) * 100
-          const trailPct = (price / peak - 1) * 100
-
-          let reason: ExitReason | null = null
-          if (c.autoSell && pct >= c.takeProfit) reason = 'TP'
-          else if (c.autoSell && c.trailing && peak > p.entry * 1.05 && trailPct <= -c.stopLoss) reason = 'Trail'
-          else if (c.autoSell && pct <= -c.stopLoss) reason = 'SL'
-
-          if (reason) {
-            const pnlPct = pct
-            const done: Position = {
-              ...p,
-              price,
-              peak,
-              status: 'closed',
-              exitReason: reason,
-              pnlPct,
-              pnlSol: (p.amountSol * pnlPct) / 100,
-              closedAt: Date.now(),
-            }
-            closed.push(done)
-            return done
-          }
-          return { ...p, price, peak }
-        })
-        if (closed.length) {
-          queueMicrotask(() =>
-            closed.forEach((p) =>
-              addLog(
-                'sell',
-                `${p.exitReason} ${p.symbol} — ${p.pnlPct! >= 0 ? '+' : ''}${p.pnlPct!.toFixed(1)}% (${p.pnlSol! >= 0 ? '+' : ''}${p.pnlSol!.toFixed(3)} SOL)`,
-              ),
-            ),
+    let ticking = false
+    const tick = async () => {
+      if (ticking) return
+      ticking = true
+      try {
+        const co = cfg.current
+        for (const p of posRef.current) {
+          if (p.status !== 'open' || selling.current.has(p.id)) continue
+          const v = await exec.current.value(p.mint, p.tokenAmount)
+          if (v == null) continue
+          const peak = Math.max(p.peakSol, v)
+          const pct = (v / p.entryValueSol - 1) * 100
+          const trailPct = (v / peak - 1) * 100
+          setPositions((prev) =>
+            prev.map((x) => (x.id === p.id && x.status === 'open' ? { ...x, valueSol: v, peakSol: peak } : x)),
           )
+          if (!co.autoSell) continue
+          if (pct >= co.takeProfit) void closePosition(p, 'TP')
+          else if (co.trailing && peak > p.entryValueSol * 1.05 && trailPct <= -co.stopLoss) void closePosition(p, 'Trail')
+          else if (pct <= -co.stopLoss) void closePosition(p, 'SL')
         }
-        return next
-      })
-    }, 1100)
-    return () => clearInterval(tick)
-  }, [running, addLog])
+      } finally {
+        ticking = false
+      }
+    }
+    const iv = setInterval(tick, exec.current.live ? 4000 : 1100)
+    return () => clearInterval(iv)
+  }, [running, closePosition])
 
   const sellOne = useCallback((id: string) => {
-    setPositions((prev) =>
-      prev.map((p) => {
-        if (p.id !== id || p.status !== 'open') return p
-        const pnlPct = (p.price / p.entry - 1) * 100
-        return { ...p, status: 'closed', exitReason: 'Manual', pnlPct, pnlSol: (p.amountSol * pnlPct) / 100, closedAt: Date.now() }
-      }),
-    )
-  }, [])
+    const p = posRef.current.find((x) => x.id === id && x.status === 'open')
+    if (p) void closePosition(p, 'Manual')
+  }, [closePosition])
 
   const sellAll = useCallback(() => {
-    setPositions((prev) =>
-      prev.map((p) => {
-        if (p.status !== 'open') return p
-        const pnlPct = (p.price / p.entry - 1) * 100
-        return { ...p, status: 'closed', exitReason: 'Manual', pnlPct, pnlSol: (p.amountSol * pnlPct) / 100, closedAt: Date.now() }
-      }),
-    )
-  }, [])
+    posRef.current.filter((x) => x.status === 'open').forEach((p) => void closePosition(p, 'Manual'))
+  }, [closePosition])
 
   const reset = useCallback(() => {
     setPositions([])
@@ -243,7 +272,7 @@ export function useSniperBot(running: boolean, config: SniperConfig, feedTokens:
     const open = positions.filter((p) => p.status === 'open')
     const closed = positions.filter((p) => p.status === 'closed')
     const realized = closed.reduce((s, p) => s + (p.pnlSol || 0), 0)
-    const unreal = open.reduce((s, p) => s + p.amountSol * (p.price / p.entry - 1), 0)
+    const unreal = open.reduce((s, p) => s + (p.valueSol - p.entryValueSol), 0)
     const wins = closed.filter((p) => (p.pnlSol || 0) > 0).length
     const winRate = closed.length ? (wins / closed.length) * 100 : 0
     return { open, closed, realized, unreal, total: realized + unreal, winRate, snipes: positions.length }
