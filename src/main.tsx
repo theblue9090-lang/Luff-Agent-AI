@@ -1,5 +1,5 @@
 import { Buffer } from 'buffer'
-import { StrictMode } from 'react'
+import { Component, StrictMode, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { PrivyProvider } from '@privy-io/react-auth'
 import './index.css'
@@ -12,20 +12,37 @@ if (!(globalThis as unknown as { Buffer?: unknown }).Buffer) {
   ;(globalThis as unknown as { Buffer: typeof Buffer }).Buffer = Buffer
 }
 
-const tree = (
-  <WalletProvider>
+// If Privy fails to initialize (e.g. a bad app ID), keep the site working
+// without login instead of blanking the whole page.
+class PrivyBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+  componentDidCatch(err: unknown) {
+    console.error('Privy failed to initialize — running without login.', err)
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children
+  }
+}
+
+const withoutPrivy = (
+  <WalletProvider forceDisabled>
     <App />
   </WalletProvider>
 )
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    {PRIVY_APP_ID ? (
-      <PrivyProvider appId={PRIVY_APP_ID} config={privyConfig}>
-        {tree}
-      </PrivyProvider>
-    ) : (
-      tree
-    )}
-  </StrictMode>,
+const root = PRIVY_APP_ID ? (
+  <PrivyBoundary fallback={withoutPrivy}>
+    <PrivyProvider appId={PRIVY_APP_ID} config={privyConfig}>
+      <WalletProvider>
+        <App />
+      </WalletProvider>
+    </PrivyProvider>
+  </PrivyBoundary>
+) : (
+  withoutPrivy
 )
+
+createRoot(document.getElementById('root')!).render(<StrictMode>{root}</StrictMode>)

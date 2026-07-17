@@ -1,7 +1,7 @@
 import type { PrivyClientConfig } from '@privy-io/react-auth'
 
 // Set VITE_PRIVY_APP_ID (from dashboard.privy.io) to enable managed wallets.
-export const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID as string | undefined
+export const PRIVY_APP_ID = (import.meta.env.VITE_PRIVY_APP_ID as string | undefined)?.trim() || undefined
 export const PRIVY_ENABLED = !!PRIVY_APP_ID
 
 export const privyConfig: PrivyClientConfig = {

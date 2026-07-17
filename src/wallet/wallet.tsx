@@ -46,8 +46,14 @@ export function useLuffWallet(): LuffWallet {
   return useContext(WalletCtx)
 }
 
-export function WalletProvider({ children }: { children: ReactNode }) {
-  return PRIVY_ENABLED ? (
+export function WalletProvider({
+  children,
+  forceDisabled,
+}: {
+  children: ReactNode
+  forceDisabled?: boolean
+}) {
+  return PRIVY_ENABLED && !forceDisabled ? (
     <PrivyBridge>{children}</PrivyBridge>
   ) : (
     <WalletCtx.Provider value={disabledWallet}>{children}</WalletCtx.Provider>
