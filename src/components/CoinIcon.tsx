@@ -49,22 +49,3 @@ export default function CoinIcon({ icon, symbol, size = 36 }: CoinIconProps) {
     </div>
   )
 }
-
-const CHAIN_LABEL: Record<string, string> = {
-  solana: 'SOL',
-  ethereum: 'ETH',
-  base: 'BASE',
-  bsc: 'BSC',
-  arbitrum: 'ARB',
-  polygon: 'POLY',
-  avalanche: 'AVAX',
-}
-
-export function ChainBadge({ chainId }: { chainId: string }) {
-  const label = CHAIN_LABEL[chainId] ?? chainId.slice(0, 4).toUpperCase()
-  return (
-    <span className="chip border-luff-border bg-white/[0.03] px-1.5 py-0.5 text-[10px] text-luff-muted">
-      {label}
-    </span>
-  )
-}

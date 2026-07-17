@@ -4,7 +4,7 @@ import { useLiveMarkets } from '../hooks/useLiveMarkets'
 import type { Coin } from '../lib/marketApi'
 import { FALLBACK_COINS } from '../data/fallbackCoins'
 import { formatUSD, formatPrice, formatPct, formatAgo } from '../lib/format'
-import CoinIcon, { ChainBadge } from './CoinIcon'
+import CoinIcon from './CoinIcon'
 
 type Tab = 'new' | 'top' | 'gainers' | 'losers' | 'volume' | 'trending'
 
@@ -40,8 +40,10 @@ export default function LiveMarkets() {
   const [tab, setTab] = useState<Tab>('trending')
 
   const isLive = status === 'live' && coins.length > 0
-  const source = isLive ? coins : FALLBACK_COINS
-  const rows = useMemo(() => sortFor(tab, source).slice(0, 20), [tab, source])
+  const rows = useMemo(() => {
+    const source = (isLive ? coins : FALLBACK_COINS).filter((c) => c.chainId === 'solana')
+    return sortFor(tab, source).slice(0, 20)
+  }, [tab, isLive, coins])
 
   return (
     <section id="markets" className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
@@ -55,6 +57,12 @@ export default function LiveMarkets() {
           <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-luff-muted">
             Powered by
             <span className="font-medium text-luff-text">DexScreener</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-luff-border bg-white/[0.03] px-2 py-0.5 text-xs font-medium text-luff-text">
+              <span className="flex h-3.5 w-3.5 items-center justify-center rounded text-[9px] font-bold text-white" style={{ background: 'linear-gradient(135deg,#9945FF,#14F195)' }}>
+                ◎
+              </span>
+              Solana
+            </span>
             <StatusPill status={status} isLive={isLive} updatedAt={updatedAt} />
           </p>
         </div>
@@ -170,7 +178,6 @@ function CoinRow({ coin, rank, showAge }: { coin: Coin; rank: number; showAge: b
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="font-semibold">{coin.symbol}</span>
-              <ChainBadge chainId={coin.chainId} />
               {coin.trending && <span className="text-xs">🔥</span>}
             </div>
             <div className="max-w-[160px] truncate text-xs text-luff-muted">{coin.name}</div>

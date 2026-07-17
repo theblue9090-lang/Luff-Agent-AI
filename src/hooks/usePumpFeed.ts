@@ -10,9 +10,32 @@ export interface PumpToken {
   marketCapSol: number
   uri?: string
   pool?: string
+  image?: string
 }
 
 const WS_URL = 'wss://pumpportal.fun/api/data'
+
+/** Turn ipfs:// (and bare CID) URIs into an HTTP gateway URL. */
+function ipfsToHttp(u: string): string {
+  if (!u) return u
+  if (u.startsWith('ipfs://')) return `https://ipfs.io/ipfs/${u.slice(7)}`
+  return u
+}
+
+/**
+ * pump.fun stores each token's off-chain metadata JSON at `uri`; the logo is
+ * its `image` field. Fetch it (with a timeout) so the launch feed shows logos.
+ */
+async function resolveImage(uri: string, signal: AbortSignal): Promise<string | undefined> {
+  try {
+    const res = await fetch(ipfsToHttp(uri), { signal })
+    if (!res.ok) return undefined
+    const meta = await res.json()
+    return meta?.image ? ipfsToHttp(String(meta.image)) : undefined
+  } catch {
+    return undefined
+  }
+}
 
 /**
  * Streams brand-new pump.fun token launches in real time via PumpPortal's
@@ -27,6 +50,13 @@ export function usePumpFeed(max = 24) {
   useEffect(() => {
     let closed = false
     let retry: ReturnType<typeof setTimeout> | undefined
+    const controller = new AbortController()
+
+    const hydrateImage = async (mint: string, uri: string) => {
+      const image = await resolveImage(uri, controller.signal)
+      if (!image || closed) return
+      setTokens((prev) => prev.map((t) => (t.mint === mint ? { ...t, image } : t)))
+    }
 
     const connect = () => {
       let ws: WebSocket
@@ -60,6 +90,7 @@ export function usePumpFeed(max = 24) {
               if (prev.some((t) => t.mint === token.mint)) return prev
               return [token, ...prev].slice(0, max)
             })
+            if (token.uri) hydrateImage(token.mint, token.uri)
           }
         } catch {
           /* ignore keep-alive / non-JSON frames */
@@ -79,6 +110,7 @@ export function usePumpFeed(max = 24) {
     return () => {
       closed = true
       if (retry) clearTimeout(retry)
+      controller.abort()
       wsRef.current?.close()
     }
   }, [max])

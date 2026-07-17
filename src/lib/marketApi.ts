@@ -58,6 +58,8 @@ async function fetchTrendingAddresses(): Promise<AddrMeta[]> {
     for (const t of arr) {
       const addr = t?.tokenAddress
       if (!addr) continue
+      // Solana-only focus
+      if (t.chainId && t.chainId !== 'solana') continue
       const prev = out.get(addr)
       out.set(addr, {
         addr,
@@ -114,6 +116,7 @@ async function hydrate(addresses: AddrMeta[]): Promise<Coin[]> {
     if (res.status !== 'fulfilled') continue
     const pairs: any[] = res.value?.pairs ?? []
     for (const p of pairs) {
+      if (p.chainId !== 'solana') continue // Solana-only
       const addr = p.baseToken?.address
       if (!addr) continue
       const meta = metaByAddr.get(addr.toLowerCase())

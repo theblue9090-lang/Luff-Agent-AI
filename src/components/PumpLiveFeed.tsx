@@ -52,7 +52,7 @@ export default function PumpLiveFeed() {
                 key={t.mint}
                 className={`flex items-center gap-3 px-4 py-3 sm:px-5 ${i === 0 ? 'flash-in' : ''}`}
               >
-                <CoinIcon icon={null} symbol={t.symbol} size={38} />
+                <CoinIcon icon={t.image ?? null} symbol={t.symbol} size={38} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="truncate font-semibold">{t.symbol}</span>
