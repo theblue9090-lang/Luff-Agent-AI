@@ -57,7 +57,7 @@ export default function Portfolio() {
 
   return (
     <section id="portfolio" className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3" data-reveal>
         <div>
           <div className="mb-1 inline-flex items-center gap-1.5 text-sm font-medium text-luff-red">
             <PieChart className="h-4 w-4" />

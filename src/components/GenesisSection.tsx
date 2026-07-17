@@ -10,7 +10,7 @@ interface GenesisSectionProps {
 export default function GenesisSection({ onPledge }: GenesisSectionProps) {
   return (
     <section id="genesis" className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-      <div className="mb-6 flex items-end justify-between">
+      <div className="mb-6 flex items-end justify-between" data-reveal>
         <div>
           <div className="mb-1 inline-flex items-center gap-1.5 text-sm font-medium text-luff-ember">
             <Flame className="h-4 w-4" />
@@ -24,8 +24,13 @@ export default function GenesisSection({ onPledge }: GenesisSectionProps) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        {genesisAgents.map((a) => (
-          <div key={a.id} className="glass card-hover rounded-2xl p-5">
+        {genesisAgents.map((a, i) => (
+          <div
+            key={a.id}
+            className="glass card-hover rounded-2xl p-5"
+            data-reveal="scale"
+            style={{ '--reveal-delay': `${i * 90}ms` } as React.CSSProperties}
+          >
             <div className="flex items-center gap-3">
               <AgentAvatar gradient={a.gradient} glyph={a.glyph} size={48} />
               <div className="min-w-0 flex-1">

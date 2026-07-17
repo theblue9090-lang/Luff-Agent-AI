@@ -61,7 +61,7 @@ export default function LiveMarkets() {
 
   return (
     <section id="markets" className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3" data-reveal>
         <div>
           <div className="mb-1 inline-flex items-center gap-1.5 text-sm font-medium text-luff-red">
             <TrendingUp className="h-4 w-4" />
@@ -108,7 +108,7 @@ export default function LiveMarkets() {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-2xl border border-luff-border bg-white/[0.02]">
+      <div className="overflow-hidden rounded-2xl border border-luff-border bg-white/[0.02]" data-reveal>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-sm">
             <thead>

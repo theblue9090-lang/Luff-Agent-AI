@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { agents as seedAgents, type Agent } from './data/agents'
 import { defaultNetwork, type Network } from './data/networks'
 import { useLivePrices } from './hooks/useLivePrices'
+import { useScrollReveal } from './hooks/useScrollReveal'
+import ScrollProgress from './components/ScrollProgress'
 import { formatUSD, formatNumber, shortAddress, generateAddress } from './lib/format'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
@@ -20,6 +22,7 @@ import LaunchModal from './components/LaunchModal'
 import Toast from './components/Toast'
 
 export default function App() {
+  useScrollReveal()
   const liveAgents = useLivePrices(seedAgents)
 
   // UI state
@@ -125,6 +128,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
+      <ScrollProgress />
       <Navbar
         query={query}
         onQuery={setQuery}
@@ -152,7 +156,7 @@ export default function App() {
 
         {/* Marketplace */}
         <section id="agents" className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-          <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-3" data-reveal>
             <div>
               <h2 id="trending" className="font-display text-2xl font-bold sm:text-3xl">
                 Agent marketplace
@@ -180,10 +184,11 @@ export default function App() {
 
           {visible.length > 0 ? (
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {visible.map((a) => (
+              {visible.map((a, i) => (
                 <AgentCard
                   key={a.id}
                   agent={a}
+                  index={i}
                   starred={starred.has(a.id)}
                   onStar={toggleStar}
                   onOpen={setSelected}
@@ -214,7 +219,10 @@ export default function App() {
 
         {/* Leaderboard CTA */}
         <section id="points" className="mx-auto max-w-7xl px-4 pb-16 sm:px-6">
-          <div className="relative overflow-hidden rounded-3xl border border-luff-red/30 bg-gradient-to-br from-luff-red/15 via-luff-crimson/10 to-transparent p-8 sm:p-12">
+          <div
+            className="relative overflow-hidden rounded-3xl border border-luff-red/30 bg-gradient-to-br from-luff-red/15 via-luff-crimson/10 to-transparent p-8 sm:p-12"
+            data-reveal="scale"
+          >
             <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-luff-red/25 blur-3xl" />
             <div className="relative max-w-lg">
               <h2 className="font-display text-2xl font-bold sm:text-3xl">Earn LUFF Points</h2>

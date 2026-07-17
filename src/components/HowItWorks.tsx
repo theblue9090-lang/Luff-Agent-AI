@@ -26,13 +26,18 @@ const STEPS = [
 export default function HowItWorks() {
   return (
     <section id="docs" className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-      <div className="mb-8 text-center">
+      <div className="mb-8 text-center" data-reveal>
         <h2 className="font-display text-2xl font-bold sm:text-3xl">How LUFF works</h2>
         <p className="mt-2 text-sm text-luff-muted">Four steps from idea to a tradable, working agent.</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {STEPS.map((s, i) => (
-          <div key={s.title} className="glass card-hover relative rounded-2xl p-5">
+          <div
+            key={s.title}
+            className="glass card-hover relative rounded-2xl p-5"
+            data-reveal="scale"
+            style={{ '--reveal-delay': `${i * 80}ms` } as React.CSSProperties}
+          >
             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-luff-red/10 text-luff-red">
               <s.icon className="h-5 w-5" />
             </div>

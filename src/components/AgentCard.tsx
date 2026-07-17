@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { Star, BadgeCheck, ArrowUpRight } from 'lucide-react'
 import type { Agent } from '../data/agents'
 import { sparkFor } from '../data/agents'
@@ -10,15 +11,18 @@ interface AgentCardProps {
   starred: boolean
   onStar: (id: string) => void
   onOpen: (agent: Agent) => void
+  index?: number
 }
 
-export default function AgentCard({ agent, starred, onStar, onOpen }: AgentCardProps) {
+export default function AgentCard({ agent, starred, onStar, onOpen, index = 0 }: AgentCardProps) {
   const up = agent.change24h >= 0
   const spark = sparkFor(agent.id, agent.change24h)
 
   return (
     <button
       onClick={() => onOpen(agent)}
+      data-reveal="scale"
+      style={{ '--reveal-delay': `${(index % 4) * 70}ms` } as CSSProperties}
       className="group card-hover glass relative flex flex-col rounded-2xl p-4 text-left"
     >
       {/* Header */}

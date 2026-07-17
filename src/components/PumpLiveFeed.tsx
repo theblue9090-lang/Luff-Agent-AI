@@ -15,7 +15,7 @@ export default function PumpLiveFeed() {
 
   return (
     <section id="launches" className="mx-auto max-w-7xl px-4 pb-2 sm:px-6">
-      <div className="glass overflow-hidden rounded-2xl">
+      <div className="glass overflow-hidden rounded-2xl" data-reveal>
         {/* header */}
         <div className="flex items-center justify-between border-b border-luff-border px-4 py-3 sm:px-5">
           <div className="flex items-center gap-2.5">

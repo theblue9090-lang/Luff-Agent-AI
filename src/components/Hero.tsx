@@ -8,10 +8,10 @@ export default function Hero({ onLaunch }: HeroProps) {
   return (
     <section id="top" className="relative overflow-hidden">
       <div className="grid-bg pointer-events-none absolute inset-0 opacity-40" />
-      <div className="pointer-events-none absolute -top-24 left-1/2 h-72 w-[42rem] -translate-x-1/2 rounded-full bg-luff-red/20 blur-[120px]" />
+      <div className="animate-pulseGlow pointer-events-none absolute -top-24 left-1/2 h-72 w-[42rem] -translate-x-1/2 rounded-full bg-luff-red/20 blur-[120px]" />
 
       <div className="relative mx-auto max-w-7xl px-4 pb-10 pt-16 sm:px-6 sm:pt-24">
-        <div className="mx-auto max-w-3xl text-center">
+        <div className="mx-auto max-w-3xl text-center" data-reveal>
           <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
             Launch, own &amp; trade
             <br />

@@ -27,7 +27,7 @@ export default function Footer() {
   return (
     <footer className="border-t border-luff-border">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
-        <div className="grid gap-10 md:grid-cols-[1.5fr_repeat(4,1fr)]">
+        <div className="grid gap-10 md:grid-cols-[1.5fr_repeat(4,1fr)]" data-reveal>
           <div>
             <a href="#top" className="flex items-center gap-2.5">
               <img src="/logo.svg" alt="LUFF AGENT" className="h-9 w-9" />
