@@ -1,28 +1,30 @@
+import type { Network } from '../data/networks'
 import Modal from './Modal'
 
 interface WalletModalProps {
   open: boolean
   onClose: () => void
+  network: Network
   onSelect: (wallet: string) => void
 }
 
-const WALLETS = [
-  { name: 'MetaMask', glyph: '🦊', desc: 'Most popular EVM wallet' },
-  { name: 'Coinbase Wallet', glyph: '🔵', desc: 'Connect with Coinbase' },
-  { name: 'WalletConnect', glyph: '🔗', desc: 'Scan with any mobile wallet' },
-  { name: 'Rabby', glyph: '🐰', desc: 'Multi-chain DeFi wallet' },
-]
-
-export default function WalletModal({ open, onClose, onSelect }: WalletModalProps) {
+export default function WalletModal({ open, onClose, network, onSelect }: WalletModalProps) {
   return (
     <Modal open={open} onClose={onClose} maxWidth="max-w-md">
       <h2 className="font-display text-xl font-bold">Connect wallet</h2>
-      <p className="mt-1 text-sm text-luff-muted">
-        Connect to trade agents, pledge to Genesis and claim points.
+      <p className="mt-1 flex items-center gap-1.5 text-sm text-luff-muted">
+        Connect a
+        <span
+          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-white"
+          style={{ background: network.gradient }}
+        >
+          {network.glyph} {network.name}
+        </span>
+        wallet to trade agents.
       </p>
 
       <div className="mt-5 grid gap-2">
-        {WALLETS.map((w) => (
+        {network.wallets.map((w) => (
           <button
             key={w.name}
             onClick={() => onSelect(w.name)}

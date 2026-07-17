@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { agents as seedAgents, type Agent } from './data/agents'
+import { defaultNetwork, type Network } from './data/networks'
 import { useLivePrices } from './hooks/useLivePrices'
-import { formatUSD, formatNumber, shortAddress } from './lib/format'
+import { formatUSD, formatNumber, shortAddress, generateAddress } from './lib/format'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import StatsBar from './components/StatsBar'
@@ -28,6 +29,7 @@ export default function App() {
   const [walletOpen, setWalletOpen] = useState(false)
   const [launchOpen, setLaunchOpen] = useState(false)
   const [connected, setConnected] = useState<string | null>(null)
+  const [network, setNetwork] = useState<Network>(defaultNetwork)
   const [toast, setToast] = useState<string | null>(null)
 
   const toggleStar = (id: string) =>
@@ -80,10 +82,10 @@ export default function App() {
 
   // Handlers
   const handleWalletSelect = (wallet: string) => {
-    const addr = '0x' + Math.random().toString(16).slice(2, 10) + '9a4f'
-    setConnected(shortAddress(addr))
+    const addr = shortAddress(generateAddress(network.addressType))
+    setConnected(addr)
     setWalletOpen(false)
-    setToast(`${wallet} connected · ${shortAddress(addr)}`)
+    setToast(`${wallet} connected on ${network.name} · ${addr}`)
   }
 
   const handleConnect = () => {
@@ -95,6 +97,18 @@ export default function App() {
     }
   }
 
+  const handleNetwork = (n: Network) => {
+    setNetwork(n)
+    if (connected) {
+      // re-derive an address for the newly selected chain
+      const addr = shortAddress(generateAddress(n.addressType))
+      setConnected(addr)
+      setToast(`Switched to ${n.name} · ${addr}`)
+    } else {
+      setToast(`Network set to ${n.name}`)
+    }
+  }
+
   const handleTrade = (side: 'buy' | 'sell', agent: Agent) => {
     if (!connected) {
       setSelected(null)
@@ -103,12 +117,19 @@ export default function App() {
       return
     }
     setSelected(null)
-    setToast(`${side === 'buy' ? 'Bought' : 'Sold'} $${agent.ticker} · order simulated`)
+    setToast(`${side === 'buy' ? 'Bought' : 'Sold'} $${agent.ticker} on ${network.name} · order simulated`)
   }
 
   return (
     <div className="min-h-screen">
-      <Navbar query={query} onQuery={setQuery} onConnect={handleConnect} connected={connected} />
+      <Navbar
+        query={query}
+        onQuery={setQuery}
+        onConnect={handleConnect}
+        connected={connected}
+        network={network}
+        onNetwork={handleNetwork}
+      />
 
       <main>
         <Hero onLaunch={() => setLaunchOpen(true)} />
@@ -208,7 +229,12 @@ export default function App() {
 
       {/* Overlays */}
       <AgentModal agent={selected} onClose={() => setSelected(null)} onTrade={handleTrade} />
-      <WalletModal open={walletOpen} onClose={() => setWalletOpen(false)} onSelect={handleWalletSelect} />
+      <WalletModal
+        open={walletOpen}
+        onClose={() => setWalletOpen(false)}
+        network={network}
+        onSelect={handleWalletSelect}
+      />
       <LaunchModal open={launchOpen} onClose={() => setLaunchOpen(false)} />
       <Toast message={toast} onDone={() => setToast(null)} />
     </div>
