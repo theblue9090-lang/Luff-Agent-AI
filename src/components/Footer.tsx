@@ -13,10 +13,10 @@ const LINKS: Record<string, FooterLink[]> = {
     { label: 'Points', href: '#points' },
   ],
   Developers: [
-    { label: 'Docs', href: '/docs.html', external: true },
-    { label: 'Agent SDK', href: '/agent-sdk.html', external: true },
+    { label: 'Docs', href: `${import.meta.env.BASE_URL}docs.html`, external: true },
+    { label: 'Agent SDK', href: `${import.meta.env.BASE_URL}agent-sdk.html`, external: true },
   ],
-  Company: [{ label: 'About', href: '/about.html', external: true }],
+  Company: [{ label: 'About', href: `${import.meta.env.BASE_URL}about.html`, external: true }],
   Community: [
     { label: 'X', href: 'https://x.com/luffagent/' },
     { label: 'Telegram', href: 'https://t.me/luffagent/' },
@@ -30,7 +30,7 @@ export default function Footer() {
         <div className="grid gap-10 md:grid-cols-[1.5fr_repeat(4,1fr)]" data-reveal>
           <div>
             <a href="#top" className="flex items-center gap-2.5">
-              <img src="/logo.svg" alt="LUFF AGENT" className="h-9 w-9" />
+              <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="LUFF AGENT" className="h-9 w-9" />
               <div>
                 <span className="font-display text-lg font-bold">LUFF</span>
                 <span className="ml-1 font-display text-lg font-bold text-gradient">AGENT</span>

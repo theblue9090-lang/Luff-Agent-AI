@@ -8,7 +8,7 @@ export const privyConfig: PrivyClientConfig = {
   appearance: {
     theme: 'dark',
     accentColor: '#FF2E3E',
-    logo: '/logo.svg',
+    logo: `${import.meta.env.BASE_URL}logo.svg`,
     walletChainType: 'solana-only',
   },
   loginMethods: ['google', 'twitter'],

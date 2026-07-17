@@ -17,7 +17,7 @@ export default function Navbar({ query, onQuery }: NavbarProps) {
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
         {/* Logo */}
         <a href="#top" className="flex shrink-0 items-center gap-2.5">
-          <img src="/logo.svg" alt="LUFF AGENT" className="h-9 w-9" />
+          <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="LUFF AGENT" className="h-9 w-9" />
           <div className="leading-none">
             <span className="font-display text-lg font-bold tracking-tight">LUFF</span>
             <span className="ml-1 font-display text-lg font-bold tracking-tight text-gradient">AGENT</span>
