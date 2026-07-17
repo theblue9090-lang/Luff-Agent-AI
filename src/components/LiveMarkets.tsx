@@ -5,6 +5,19 @@ import type { Coin } from '../lib/marketApi'
 import { FALLBACK_COINS } from '../data/fallbackCoins'
 import { formatUSD, formatPrice, formatPct, formatAgo } from '../lib/format'
 import CoinIcon from './CoinIcon'
+import CoinTradeModal, { type TradeTarget } from './CoinTradeModal'
+
+function coinToTarget(c: Coin): TradeTarget {
+  return {
+    mint: c.key,
+    symbol: c.symbol,
+    name: c.name,
+    icon: c.icon,
+    priceUsd: c.priceUsd,
+    change24h: c.change24h,
+    pairUrl: c.url,
+  }
+}
 
 type Tab = 'new' | 'top' | 'gainers' | 'losers' | 'volume' | 'trending'
 
@@ -38,6 +51,7 @@ function sortFor(tab: Tab, coins: Coin[]): Coin[] {
 export default function LiveMarkets() {
   const { coins, status, updatedAt, refresh } = useLiveMarkets()
   const [tab, setTab] = useState<Tab>('trending')
+  const [tradeTarget, setTradeTarget] = useState<TradeTarget | null>(null)
 
   const isLive = status === 'live' && coins.length > 0
   const rows = useMemo(() => {
@@ -96,7 +110,7 @@ export default function LiveMarkets() {
       {/* Table */}
       <div className="overflow-hidden rounded-2xl border border-luff-border bg-white/[0.02]">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-sm">
+          <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="border-b border-luff-border text-left text-xs text-luff-muted">
                 <th className="px-4 py-3 font-medium">#</th>
@@ -113,7 +127,13 @@ export default function LiveMarkets() {
             </thead>
             <tbody>
               {rows.map((c, i) => (
-                <CoinRow key={c.key} coin={c} rank={i + 1} showAge={tab === 'new'} />
+                <CoinRow
+                  key={c.key}
+                  coin={c}
+                  rank={i + 1}
+                  showAge={tab === 'new'}
+                  onTrade={() => setTradeTarget(coinToTarget(c))}
+                />
               ))}
               {rows.length === 0 && (
                 <tr>
@@ -132,6 +152,8 @@ export default function LiveMarkets() {
           Showing sample data — the live DexScreener feed loads automatically in your browser.
         </p>
       )}
+
+      <CoinTradeModal target={tradeTarget} onClose={() => setTradeTarget(null)} />
     </section>
   )
 }
@@ -166,7 +188,17 @@ function StatusPill({
   )
 }
 
-function CoinRow({ coin, rank, showAge }: { coin: Coin; rank: number; showAge: boolean }) {
+function CoinRow({
+  coin,
+  rank,
+  showAge,
+  onTrade,
+}: {
+  coin: Coin
+  rank: number
+  showAge: boolean
+  onTrade: () => void
+}) {
   const up = coin.change24h >= 0
   const up1h = coin.change1h >= 0
   return (
@@ -199,17 +231,24 @@ function CoinRow({ coin, rank, showAge }: { coin: Coin; rank: number; showAge: b
       <td className="px-4 py-3 text-right tabular-nums">
         {showAge ? (coin.pairCreatedAt ? formatAgo(coin.pairCreatedAt) : '—') : formatUSD(coin.marketCap)}
       </td>
-      <td className="px-2 py-3 text-right">
-        <a
-          href={coin.url}
-          target="_blank"
-          rel="noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="inline-flex rounded-lg p-1.5 text-luff-muted transition-colors hover:text-luff-red"
-          aria-label="Open on DexScreener"
-        >
-          <ExternalLink className="h-4 w-4" />
-        </a>
+      <td className="px-3 py-3">
+        <div className="flex items-center justify-end gap-1.5">
+          <button
+            onClick={onTrade}
+            className="rounded-full bg-red-grad px-3.5 py-1.5 text-xs font-semibold text-white shadow-glow-sm transition-all hover:brightness-110 active:scale-95"
+          >
+            Trade
+          </button>
+          <a
+            href={coin.url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex rounded-lg p-1.5 text-luff-muted transition-colors hover:text-luff-red"
+            aria-label="Open on DexScreener"
+          >
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        </div>
       </td>
     </tr>
   )

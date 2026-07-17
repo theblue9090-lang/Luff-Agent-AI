@@ -1,10 +1,17 @@
+import { useState } from 'react'
 import { Zap, ExternalLink, Radio } from 'lucide-react'
-import { usePumpFeed, type PumpStatus } from '../hooks/usePumpFeed'
+import { usePumpFeed, type PumpStatus, type PumpToken } from '../hooks/usePumpFeed'
 import { formatAgo } from '../lib/format'
 import CoinIcon from './CoinIcon'
+import CoinTradeModal, { type TradeTarget } from './CoinTradeModal'
+
+function pumpToTarget(t: PumpToken): TradeTarget {
+  return { mint: t.mint, symbol: t.symbol, name: t.name, icon: t.image ?? null }
+}
 
 export default function PumpLiveFeed() {
   const { tokens, status } = usePumpFeed()
+  const [tradeTarget, setTradeTarget] = useState<TradeTarget | null>(null)
 
   return (
     <section id="launches" className="mx-auto max-w-7xl px-4 pb-2 sm:px-6">
@@ -69,20 +76,30 @@ export default function PumpLiveFeed() {
                     )}
                   </div>
                 </div>
-                <a
-                  href={`https://pump.fun/coin/${t.mint}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-luff-border px-2.5 py-1 text-xs text-luff-muted transition-colors hover:border-luff-red/50 hover:text-luff-red"
-                >
-                  View
-                  <ExternalLink className="h-3 w-3" />
-                </a>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <button
+                    onClick={() => setTradeTarget(pumpToTarget(t))}
+                    className="rounded-full bg-red-grad px-3 py-1 text-xs font-semibold text-white shadow-glow-sm transition-all hover:brightness-110 active:scale-95"
+                  >
+                    Trade
+                  </button>
+                  <a
+                    href={`https://pump.fun/coin/${t.mint}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-full border border-luff-border px-2.5 py-1 text-xs text-luff-muted transition-colors hover:border-luff-red/50 hover:text-luff-red"
+                  >
+                    View
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
               </li>
             ))}
           </ul>
         )}
       </div>
+
+      <CoinTradeModal target={tradeTarget} onClose={() => setTradeTarget(null)} />
     </section>
   )
 }

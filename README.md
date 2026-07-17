@@ -13,7 +13,11 @@ inspired by the Virtuals app experience and rebuilt with a full red theme and th
   interval; a manual **Refresh** button is also provided.
 - **pump.fun Live Launches** — a real-time stream that connects to pump.fun (via the
   free PumpPortal WebSocket) and prepends **every brand-new coin the instant it mints**,
-  with a highlight animation on the newest entry.
+  with a highlight animation on the newest entry and its logo pulled from on-chain metadata.
+- **Trade directly on-site + live chart** — every coin (and every new launch) has a
+  **Trade** button that opens a modal with a **live DexScreener chart** and an embedded
+  **Jupiter** swap so users can **buy/sell real Solana tokens** with their own wallet,
+  without leaving the site. Buy/Sell toggle flips the swap direction (SOL ↔ token).
 - **Agent marketplace** — live grid of agent tokens with price, 24h change, market cap,
   volume, holders and animated sparkline charts.
 - **Live prices** — prices, market caps and 24h change drift in real time to feel like a
@@ -47,6 +51,20 @@ The live sections work entirely client-side:
   that broadcasts every new pump.fun token creation. We subscribe with
   `subscribeNewToken` and stream launches in as they happen.
   See `src/hooks/usePumpFeed.ts`.
+- **Jupiter Plugin** (`https://plugin.jup.ag/plugin-v1.js`) — the embedded swap widget
+  that powers real on-site buy/sell. It manages its own Solana wallet connection and
+  on-chain execution. See `src/lib/jupiter.ts` and `src/components/CoinTradeModal.tsx`.
+- **DexScreener chart embed** (`<pair-url>?embed=1&theme=dark`) — the live price chart
+  shown inside the trade modal.
+
+### Real trading — what you need to know
+
+- Swaps are **real** and execute on-chain via Jupiter using the visitor's own Solana
+  wallet (Phantom, Solflare, …) — the demo Connect button in the navbar is separate.
+- Set **`VITE_SOLANA_RPC`** (copy `.env.example` → `.env`) to a dedicated RPC for
+  reliable swaps; the public endpoint is rate-limited. See `.env.example`.
+- Brand-new pump.fun coins may not be routable/chartable until they have DEX liquidity;
+  the modal falls back to "Trade on Jupiter" / "DexScreener" links in that case.
 
 If a feed can't be reached (e.g. offline, or inside a sandboxed preview whose
 network egress is restricted), the board shows clearly-labelled **sample data** and
