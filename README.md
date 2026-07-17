@@ -14,6 +14,14 @@ experience and rebuilt with a full red theme and the LUFF brand.
 - **pump.fun Live Launches** — a real-time stream that connects to pump.fun (via the
   free PumpPortal WebSocket) and prepends **every brand-new coin the instant it mints**,
   with a highlight animation on the newest entry and its logo pulled from on-chain metadata.
+- **Sniper Bot** — an auto-executing sniper that watches the live pump.fun feed and
+  snipes matching launches with **no manual step**: target **new launches** or only a
+  specific **dev address**, set the **buy amount in SOL**, and manage risk with
+  **Take Profit / Stop Loss / trailing stop**, slippage, priority fee and market-cap
+  filters. It opens positions automatically and closes them on triggers, with a live
+  positions table, activity log and P&L / win-rate stats. Runs in real-time **simulation**
+  (safe, client-side); real unattended execution requires a funded executor + backend
+  signer. See `src/hooks/useSniperBot.ts` and `src/components/SniperBot.tsx`.
 - **Trade directly on-site + live chart** — every coin (and every new launch) has a
   **Trade** button that opens a modal with a **live DexScreener chart** and an embedded
   **Jupiter** swap so users can **buy/sell real Solana tokens** with their own wallet,

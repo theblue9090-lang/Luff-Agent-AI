@@ -14,6 +14,8 @@ import GenesisSection from './components/GenesisSection'
 import Portfolio from './components/Portfolio'
 import LiveMarkets from './components/LiveMarkets'
 import PumpLiveFeed from './components/PumpLiveFeed'
+import SniperBot from './components/SniperBot'
+import { usePumpFeed } from './hooks/usePumpFeed'
 import HowItWorks from './components/HowItWorks'
 import Footer from './components/Footer'
 import AgentModal from './components/AgentModal'
@@ -24,6 +26,7 @@ import Toast from './components/Toast'
 export default function App() {
   useScrollReveal()
   const liveAgents = useLivePrices(seedAgents)
+  const pump = usePumpFeed()
 
   // UI state
   const [query, setQuery] = useState('')
@@ -152,7 +155,10 @@ export default function App() {
 
         {/* Live coin data from DexScreener + real-time pump.fun launches */}
         <LiveMarkets />
-        <PumpLiveFeed />
+        <PumpLiveFeed tokens={pump.tokens} status={pump.status} />
+
+        {/* Auto-executing sniper bot */}
+        <SniperBot feedTokens={pump.tokens} feedLive={pump.status === 'live'} />
 
         {/* Marketplace */}
         <section id="agents" className="mx-auto max-w-7xl px-4 py-14 sm:px-6">

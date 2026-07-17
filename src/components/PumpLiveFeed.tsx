@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Zap, ExternalLink, Radio } from 'lucide-react'
-import { usePumpFeed, type PumpStatus, type PumpToken } from '../hooks/usePumpFeed'
+import { type PumpStatus, type PumpToken } from '../hooks/usePumpFeed'
 import { formatAgo } from '../lib/format'
 import CoinIcon from './CoinIcon'
 import CoinTradeModal, { type TradeTarget } from './CoinTradeModal'
@@ -9,8 +9,12 @@ function pumpToTarget(t: PumpToken): TradeTarget {
   return { mint: t.mint, symbol: t.symbol, name: t.name, icon: t.image ?? null }
 }
 
-export default function PumpLiveFeed() {
-  const { tokens, status } = usePumpFeed()
+interface PumpLiveFeedProps {
+  tokens: PumpToken[]
+  status: PumpStatus
+}
+
+export default function PumpLiveFeed({ tokens, status }: PumpLiveFeedProps) {
   const [tradeTarget, setTradeTarget] = useState<TradeTarget | null>(null)
 
   return (

@@ -8,6 +8,7 @@ export interface PumpToken {
   symbol: string
   createdAt: number
   marketCapSol: number
+  creator?: string
   uri?: string
   pool?: string
   image?: string
@@ -83,6 +84,7 @@ export function usePumpFeed(max = 24) {
               symbol: d.symbol || '?',
               createdAt: Date.now(),
               marketCapSol: Number(d.marketCapSol) || 0,
+              creator: d.traderPublicKey,
               uri: d.uri,
               pool: d.pool,
             }
