@@ -9,6 +9,7 @@ import StatsBar from './components/StatsBar'
 import FilterBar, { type TypeFilter, type SortKey } from './components/FilterBar'
 import AgentCard from './components/AgentCard'
 import GenesisSection from './components/GenesisSection'
+import Portfolio from './components/Portfolio'
 import LiveMarkets from './components/LiveMarkets'
 import PumpLiveFeed from './components/PumpLiveFeed'
 import HowItWorks from './components/HowItWorks'
@@ -141,6 +142,9 @@ export default function App() {
           agentCount={liveAgents.length}
           holders={stats.holders}
         />
+
+        {/* Real-time portfolio of the user's assets */}
+        <Portfolio connected={connected} onConnect={handleConnect} />
 
         {/* Live coin data from DexScreener + real-time pump.fun launches */}
         <LiveMarkets />

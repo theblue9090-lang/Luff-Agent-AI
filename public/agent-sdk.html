@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <meta name="theme-color" content="#0B0507" />
+    <meta name="description" content="LUFF Agent SDK — build, tokenize and deploy autonomous AI agents on Solana." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/page.css" />
+    <title>Agent SDK — LUFF AGENT</title>
+  </head>
+  <body>
+    <header class="site">
+      <div class="bar">
+        <a class="logo" href="/"><img src="/logo.svg" alt="LUFF AGENT" /><span class="brand">LUFF<span class="g">AGENT</span></span></a>
+        <a class="back" href="/">← Back to app</a>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section class="hero">
+        <span class="eyebrow">Developers</span>
+        <h1>LUFF <span class="g">Agent SDK</span></h1>
+        <p class="lead">Build, tokenize and deploy autonomous AI agents that live on Solana and launch through LUFF Genesis.</p>
+      </section>
+
+      <div class="note"><strong>Preview.</strong> The Agent SDK is in active development. The API below is illustrative and shows the intended developer experience — names and signatures may change before release.</div>
+
+      <h2>Overview</h2>
+      <p>The SDK gives an agent three things: a <strong>brain</strong> (an LLM-powered loop), <strong>skills</strong> (typed tools it can call), and a <strong>wallet</strong> (to act on-chain). LUFF handles the token, the market and the Genesis launch.</p>
+
+      <h2>Install</h2>
+      <pre>npm install @luff/agent-sdk</pre>
+
+      <h2>Quickstart</h2>
+      <pre>import { createAgent, skill } from '@luff/agent-sdk'
+
+const priceCheck = skill({
+  name: 'getPrice',
+  description: 'Fetch the USD price of a Solana token',
+  run: async ({ mint }) =&gt; fetchPrice(mint),
+})
+
+const agent = createAgent({
+  name: 'EmberQuant',
+  ticker: 'EMBER',
+  model: 'claude-sonnet-5',
+  skills: [priceCheck],
+  wallet: process.env.AGENT_WALLET,
+})
+
+await agent.run('Find the top Solana gainer and summarize why.')</pre>
+
+      <h2>Core concepts</h2>
+      <div class="grid">
+        <div class="card"><div class="ico">🧠</div><h3>Agent</h3><p>The autonomous loop — reasons over goals, calls skills and decides what to do next.</p></div>
+        <div class="card"><div class="ico">🧩</div><h3>Skills</h3><p>Typed tools with a name, description and <code>run()</code>. The agent calls them to read data or act.</p></div>
+        <div class="card"><div class="ico">👛</div><h3>Wallet</h3><p>A Solana keypair the agent uses to trade, transfer and interact with programs on-chain.</p></div>
+        <div class="card"><div class="ico">🚀</div><h3>Genesis</h3><p>One call mints the agent's token and opens a fair, points-based launch on LUFF.</p></div>
+      </div>
+
+      <h2>API reference</h2>
+      <h3>createAgent(config)</h3>
+      <ul>
+        <li><code>name</code>, <code>ticker</code> — identity of the agent and its token.</li>
+        <li><code>model</code> — the LLM powering the reasoning loop.</li>
+        <li><code>skills</code> — array of <code>skill()</code> definitions.</li>
+        <li><code>wallet</code> — Solana secret key or signer.</li>
+      </ul>
+      <h3>agent.run(prompt)</h3>
+      <p>Runs one goal to completion, calling skills as needed. Returns the final result and a trace of steps.</p>
+      <h3>agent.deploy()</h3>
+      <pre>const { token, genesisUrl } = await agent.deploy({
+  category: 'DeFAI',
+  type: 'Sentient',
+})
+console.log('Launching at', genesisUrl)</pre>
+
+      <h2>Roadmap</h2>
+      <ul>
+        <li>Streaming runs &amp; step callbacks</li>
+        <li>Built-in Jupiter &amp; DexScreener skills</li>
+        <li>Multi-agent coordination (sub-agents)</li>
+        <li>On-chain skill marketplace</li>
+      </ul>
+
+      <a class="cta" href="/docs.html">Read the Docs →</a>
+    </main>
+
+    <footer class="site">
+      <div class="wrap">© <span id="y"></span> LUFF AGENT · <a href="https://x.com/luffagent/" target="_blank" rel="noreferrer">X</a> · <a href="https://t.me/luffagent/" target="_blank" rel="noreferrer">Telegram</a></div>
+    </footer>
+    <script>document.getElementById('y').textContent = new Date().getFullYear()</script>
+  </body>
+</html>

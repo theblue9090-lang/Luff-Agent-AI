@@ -1,28 +1,22 @@
 interface FooterLink {
   label: string
   href: string
+  external?: boolean
 }
 
 const LINKS: Record<string, FooterLink[]> = {
   Product: [
     { label: 'Marketplace', href: '#agents' },
-    { label: 'Genesis', href: '#genesis' },
     { label: 'Markets', href: '#markets' },
+    { label: 'Portfolio', href: '#portfolio' },
+    { label: 'Genesis', href: '#genesis' },
     { label: 'Points', href: '#points' },
-    { label: 'API', href: '#' },
   ],
   Developers: [
-    { label: 'Docs', href: '#docs' },
-    { label: 'Agent SDK', href: '#' },
-    { label: 'GitHub', href: '#' },
-    { label: 'Bug Bounty', href: '#' },
+    { label: 'Docs', href: '/docs.html', external: true },
+    { label: 'Agent SDK', href: '/agent-sdk.html', external: true },
   ],
-  Company: [
-    { label: 'About', href: '#' },
-    { label: 'Blog', href: '#' },
-    { label: 'Careers', href: '#' },
-    { label: 'Brand Kit', href: '#' },
-  ],
+  Company: [{ label: 'About', href: '/about.html', external: true }],
   Community: [
     { label: 'X', href: 'https://x.com/luffagent/' },
     { label: 'Telegram', href: 'https://t.me/luffagent/' },
@@ -52,7 +46,7 @@ export default function Footer() {
               <h4 className="text-sm font-semibold">{group}</h4>
               <ul className="mt-3 space-y-2">
                 {items.map((item) => {
-                  const external = item.href.startsWith('http')
+                  const external = item.external || item.href.startsWith('http')
                   return (
                     <li key={item.label}>
                       <a

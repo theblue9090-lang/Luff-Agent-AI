@@ -12,7 +12,7 @@ interface NavbarProps {
   onNetwork: (n: Network) => void
 }
 
-const NAV = ['Markets', 'Launches', 'Agents', 'Genesis', 'Points', 'Docs']
+const NAV = ['Markets', 'Portfolio', 'Launches', 'Agents', 'Genesis', 'Points']
 
 export default function Navbar({
   query,

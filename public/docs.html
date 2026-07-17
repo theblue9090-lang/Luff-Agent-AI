@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <meta name="theme-color" content="#0B0507" />
+    <meta name="description" content="LUFF AGENT documentation — connect, explore live markets, trade on Solana, and track your portfolio." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/page.css" />
+    <title>Docs — LUFF AGENT</title>
+  </head>
+  <body>
+    <header class="site">
+      <div class="bar">
+        <a class="logo" href="/"><img src="/logo.svg" alt="LUFF AGENT" /><span class="brand">LUFF<span class="g">AGENT</span></span></a>
+        <a class="back" href="/">← Back to app</a>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section class="hero">
+        <span class="eyebrow">Documentation</span>
+        <h1>LUFF AGENT <span class="g">Docs</span></h1>
+        <p class="lead">Everything you need to explore markets, trade Solana coins and track your holdings on LUFF.</p>
+      </section>
+
+      <h2>Getting started</h2>
+      <ol>
+        <li>Open the <a href="/">LUFF AGENT app</a>.</li>
+        <li>Browse <strong>Live Markets</strong> and the <strong>pump.fun Launches</strong> feed — no wallet needed to look around.</li>
+        <li>When you're ready to trade, hit <strong>Trade</strong> on any coin and connect a Solana wallet inside the swap.</li>
+      </ol>
+
+      <h2>Connecting a wallet</h2>
+      <p>
+        The <em>Connect</em> button in the top bar is a demo connector used for the portfolio and UI
+        state. <strong>Real trades</strong> use their own wallet connection inside the embedded
+        Jupiter swap (Phantom, Solflare, Backpack and more), so your keys never touch LUFF.
+      </p>
+
+      <h2>Live markets</h2>
+      <p>Market data is pulled directly from the public <strong>DexScreener API</strong> in your browser and refreshes automatically. Tabs let you sort the Solana market:</p>
+      <ul>
+        <li><span class="pill">New</span> freshly listed pairs</li>
+        <li><span class="pill">Top</span> highest market cap</li>
+        <li><span class="pill">Top Gainers</span> biggest 24h risers</li>
+        <li><span class="pill">Losers</span> biggest 24h fallers</li>
+        <li><span class="pill">Movers</span> highest 24h volume</li>
+        <li><span class="pill">Trending</span> boosted / promoted tokens</li>
+      </ul>
+
+      <h2>pump.fun live launches</h2>
+      <p>
+        LUFF subscribes to a real-time WebSocket (via PumpPortal) that broadcasts every new pump.fun
+        token the instant it mints. Each launch streams into the feed with its logo pulled from the
+        token's on-chain metadata.
+      </p>
+
+      <h2>Trading &amp; charts</h2>
+      <p>
+        Clicking <strong>Trade</strong> opens a live DexScreener price chart alongside an embedded
+        <strong>Jupiter</strong> swap. Use the Buy / Sell toggle to flip the direction between SOL
+        and the token. Swaps execute on-chain through Jupiter's router.
+      </p>
+      <h3>Recommended: set a dedicated RPC</h3>
+      <p>Public RPCs are rate-limited and can block swaps. Copy <code>.env.example</code> to <code>.env</code> and set your own endpoint (Helius, QuickNode, Triton, …):</p>
+      <pre>VITE_SOLANA_RPC=https://your-rpc-endpoint.example.com</pre>
+
+      <h2>Portfolio</h2>
+      <p>
+        The <strong>Portfolio</strong> section shows the assets and coins you hold with prices that
+        update in real time — total value, all-time P&amp;L, 24h change and per-asset breakdown.
+      </p>
+
+      <h2>Genesis &amp; Points</h2>
+      <p>
+        <strong>Genesis</strong> is LUFF's fair-launch mechanism: pledge LUFF Points to help launch
+        the next agent. Trading, pledging and referring friends all earn Points, which convert to
+        allocation in future launches.
+      </p>
+
+      <h2>FAQ</h2>
+      <h3>Do I need an account?</h3>
+      <p>No. LUFF is non-custodial — you interact with a Solana wallet, not an account.</p>
+      <h3>Are the trades real?</h3>
+      <p>Yes. Swaps run on-chain via Jupiter using your own wallet and funds.</p>
+      <h3>Is my money safe?</h3>
+      <p>Crypto is risky and volatile. Verify token mints, start small, and never trade more than you can afford to lose.</p>
+
+      <a class="cta" href="/agent-sdk.html">Explore the Agent SDK →</a>
+    </main>
+
+    <footer class="site">
+      <div class="wrap">© <span id="y"></span> LUFF AGENT · <a href="https://x.com/luffagent/" target="_blank" rel="noreferrer">X</a> · <a href="https://t.me/luffagent/" target="_blank" rel="noreferrer">Telegram</a></div>
+    </footer>
+    <script>document.getElementById('y').textContent = new Date().getFullYear()</script>
+  </body>
+</html>
